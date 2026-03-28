@@ -1,0 +1,572 @@
+{
+  "id": "5a9d81c7-947e-4cbd-999c-6be7ea1ef314",
+  "revision": 0,
+  "last_node_id": 79,
+  "last_link_id": 92,
+  "nodes": [
+    {
+      "id": 77,
+      "type": "XLJDownloadVideo",
+      "pos": [
+        1590.0812291412267,
+        72.54520536754107
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "widget": {
+            "name": "video_url"
+          },
+          "link": 87
+        }
+      ],
+      "outputs": [
+        {
+          "name": "本地路径",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJDownloadVideo"
+      },
+      "widgets_values": [
+        "",
+        "output/xlj_video",
+        "",
+        180
+      ]
+    },
+    {
+      "id": 65,
+      "type": "LoadImage",
+      "pos": [
+        -1031.8841897475063,
+        339.7591659138798
+      ],
+      "size": [
+        586.1054391109527,
+        900.0493933592792
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        },
+        {
+          "label": "upload",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": {
+            "name": "upload"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "label": "图像",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            88
+          ]
+        },
+        {
+          "label": "遮罩",
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.5.1",
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {},
+        "#sdppp_variant": "default",
+        "#sdppp_simple_content": "canvas",
+        "#sdppp_simple_mask": "canvas",
+        "#sdppp_simple_boundary": "canvas",
+        "#sdppp_label": ""
+      },
+      "widgets_values": [
+        "1月15日 (1)(16).png",
+        "image"
+      ]
+    },
+    {
+      "id": 78,
+      "type": "XLJUploadToImageHost",
+      "pos": [
+        117.4527572775484,
+        66.99380926097122
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 88
+        }
+      ],
+      "outputs": [
+        {
+          "name": "图片 URL",
+          "type": "STRING",
+          "links": [
+            89
+          ]
+        },
+        {
+          "name": "创建时间",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJUploadToImageHost"
+      },
+      "widgets_values": [
+        "https://imageproxy.zhongzhuan.chat/api/upload",
+        "jpeg",
+        100,
+        30
+      ]
+    },
+    {
+      "id": 62,
+      "type": "LoadImage",
+      "pos": [
+        -395.50515303450015,
+        842.6484717909332
+      ],
+      "size": [
+        560.0141384280146,
+        314
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        },
+        {
+          "label": "upload",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": {
+            "name": "upload"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "label": "图像",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            90
+          ]
+        },
+        {
+          "label": "遮罩",
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.68",
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {
+          "image": true,
+          "upload": true
+        },
+        "#sdppp_variant": "default",
+        "#sdppp_simple_content": "canvas",
+        "#sdppp_simple_mask": "canvas",
+        "#sdppp_simple_boundary": "canvas",
+        "#sdppp_label": ""
+      },
+      "widgets_values": [
+        "1月18日(16).png",
+        "image"
+      ]
+    },
+    {
+      "id": 66,
+      "type": "ttN text",
+      "pos": [
+        -66.23877536413343,
+        299.30577499855946
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "label": "文本",
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            85
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_tinyterranodes",
+        "ver": "c669e6cff81ba44cce91c9eee3236c1a64725394",
+        "Node name for S&R": "ttN text",
+        "widget_ue_connectable": {},
+        "ttNnodeVersion": "1.0.0"
+      },
+      "widgets_values": [
+        "第一人称视角御剑飞行，踩在飞剑剑神上，正视看前方，\n快速飞行中，飞剑因为快速飞行散发快速的光芒\n飞行很快速，产生极速的风\n周围极光景物也随着变化\n衣服头发随风飘动\n人物随着飞行逐渐变小最后消失\n",
+        [
+          false,
+          true
+        ]
+      ]
+    },
+    {
+      "id": 79,
+      "type": "XLJUploadToImageHost",
+      "pos": [
+        134.58528051552875,
+        594.8775300147142
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 90
+        }
+      ],
+      "outputs": [
+        {
+          "name": "图片 URL",
+          "type": "STRING",
+          "links": [
+            91
+          ]
+        },
+        {
+          "name": "创建时间",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJUploadToImageHost"
+      },
+      "widgets_values": [
+        "https://imageproxy.zhongzhuan.chat/api/upload",
+        "jpeg",
+        100,
+        30
+      ]
+    },
+    {
+      "id": 75,
+      "type": "XLJGrokCreateVideo",
+      "pos": [
+        550.0040417216447,
+        256.01567952376075
+      ],
+      "size": [
+        400,
+        494
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 85
+        },
+        {
+          "name": "image_1",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "image_1"
+          },
+          "link": 89
+        },
+        {
+          "name": "image_2",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "image_2"
+          },
+          "link": 91
+        }
+      ],
+      "outputs": [
+        {
+          "name": "任务 ID",
+          "type": "STRING",
+          "links": [
+            86
+          ]
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "增强提示词",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJGrokCreateVideo"
+      },
+      "widgets_values": [
+        "",
+        "grok-video-3",
+        "16:9",
+        "1080P",
+        "",
+        "https://xinlingjunai.cn",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        [
+          false,
+          true
+        ],
+        [
+          false,
+          true
+        ]
+      ]
+    },
+    {
+      "id": 76,
+      "type": "XLJGrokQueryVideo",
+      "pos": [
+        1177.5135055974777,
+        80.13424376048631
+      ],
+      "size": [
+        270,
+        238
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "widget": {
+            "name": "task_id"
+          },
+          "link": 86
+        }
+      ],
+      "outputs": [
+        {
+          "name": "任务 ID",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "视频 URL",
+          "type": "STRING",
+          "links": [
+            87
+          ]
+        },
+        {
+          "name": "增强提示词",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJGrokQueryVideo"
+      },
+      "widgets_values": [
+        "",
+        "sk-NVDeDPs1TIr8P3jOvHplbfi4F4mvC7Wf3TlPj9WjYbZAiCbI",
+        "https://xinlingjunai.cn",
+        true,
+        10,
+        1800
+      ]
+    }
+  ],
+  "links": [
+    [
+      85,
+      66,
+      0,
+      75,
+      0,
+      "STRING"
+    ],
+    [
+      86,
+      75,
+      0,
+      76,
+      0,
+      "STRING"
+    ],
+    [
+      87,
+      76,
+      2,
+      77,
+      0,
+      "STRING"
+    ],
+    [
+      88,
+      65,
+      0,
+      78,
+      0,
+      "IMAGE"
+    ],
+    [
+      89,
+      78,
+      0,
+      75,
+      1,
+      "STRING"
+    ],
+    [
+      90,
+      62,
+      0,
+      79,
+      0,
+      "IMAGE"
+    ],
+    [
+      91,
+      79,
+      0,
+      75,
+      2,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.2794145953766204,
+      "offset": [
+        2205.170952930066,
+        663.7949698167313
+      ]
+    },
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "workflowRendererVersion": "LG",
+    "frontendVersion": "1.37.11",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

@@ -76,6 +76,7 @@ class XLJGrokBatchProcessor:
     RETURN_NAMES = ("处理结果", "输出目录")
     FUNCTION = "process_batch"
     CATEGORY = "XLJ/Grok"
+    OUTPUT_NODE = True
 
     def process_batch(self, batch_tasks, api_key="", output_dir="./output/xlj_grok_batch",
                      delay_between_tasks=2.0, wait_for_completion=False,

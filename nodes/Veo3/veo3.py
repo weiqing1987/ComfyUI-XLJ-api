@@ -7,6 +7,10 @@ import time
 import requests
 from ..xlj_utils import env_or, http_headers_json, raise_for_bad_status, API_BASE
 
+# 禁用代理
+session = requests.Session()
+session.trust_env = False
+
 
 class XLJVeoText2Video:
     """使用 Veo 模型进行文生视频"""
@@ -50,7 +54,7 @@ class XLJVeoText2Video:
         }
 
         try:
-            resp = requests.post(endpoint, headers=http_headers_json(api_key), data=json.dumps(payload), timeout=int(timeout))
+            resp = session.post(endpoint, headers=http_headers_json(api_key), data=json.dumps(payload), timeout=int(timeout))
             raise_for_bad_status(resp, "Veo create failed")
             data = resp.json()
         except Exception as e:
@@ -123,7 +127,7 @@ class XLJVeoImage2Video:
         }
 
         try:
-            resp = requests.post(endpoint, headers=http_headers_json(api_key), data=json.dumps(payload), timeout=int(timeout))
+            resp = session.post(endpoint, headers=http_headers_json(api_key), data=json.dumps(payload), timeout=int(timeout))
             raise_for_bad_status(resp, "Veo create failed")
             data = resp.json()
         except Exception as e:
@@ -160,6 +164,7 @@ class XLJVeoQueryTask:
     RETURN_NAMES = ("状态", "视频 URL", "增强后提示词", "原始响应 JSON")
     FUNCTION = "query"
     CATEGORY = "XLJ/Veo3"
+    OUTPUT_NODE = True
 
     def query(self, task_id, api_key="", wait=True, poll_interval_sec=5, timeout_sec=600):
         api_key = env_or(api_key, "XLJ_API_KEY")
@@ -169,7 +174,7 @@ class XLJVeoQueryTask:
             last_err = None
             for attempt in range(3):
                 try:
-                    resp = requests.get(endpoint, headers=http_headers_json(api_key), params={"id": task_id}, timeout=60)
+                    resp = session.get(endpoint, headers=http_headers_json(api_key), params={"id": task_id}, timeout=60)
                     raise_for_bad_status(resp, "Veo query failed")
                     data = resp.json()
                     status = data.get("status") or ""
@@ -199,13 +204,27 @@ class XLJVeoQueryTask:
             status, video_url, enhanced_prompt, raw = once()
             last_raw = raw
             print(f"[ComfyUI-XLJ-api] 信陵君 第 {poll_count} 次查询：状态={status}")
-            if status in ("completed", "failed"):
-                print(f"[ComfyUI-XLJ-api] 信陵君 任务完成：{status}")
+            if video_url:
+                print(f"[ComfyUI-XLJ-api] 信陵君 视频 URL: {video_url}")
+
+            # 任务完成且有 URL，返回结果
+            if status == "completed" and video_url:
+                print(f"[ComfyUI-XLJ-api] 信陵君 任务完成！")
                 return (status, video_url, enhanced_prompt, raw)
+
+            # 任务失败
+            if status == "failed":
+                raise RuntimeError(f"Veo 视频生成失败，任务 ID: {task_id}")
+
+            # 继续轮询
+            print(f"[ComfyUI-XLJ-api] 信陵君 任务进行中... 已等待 {poll_count * poll_interval_sec}/{timeout_sec} 秒")
             time.sleep(int(poll_interval_sec))
 
         print(f"[ComfyUI-XLJ-api] 信陵君 轮询超时")
-        return ("timeout", "", "", last_raw or json.dumps({"error": "timeout"}, ensure_ascii=False))
+        raise RuntimeError(
+            f"Veo 视频生成超时（等待了 {timeout_sec} 秒）。"
+            f"任务 ID: {task_id}，最后状态：{status}，可使用查询节点继续检查状态。"
+        )
 
 
 class XLJVeoText2VideoAndWait:
@@ -224,6 +243,7 @@ class XLJVeoText2VideoAndWait:
     RETURN_NAMES = ("状态", "视频 URL", "增强后提示词", "任务 ID")
     FUNCTION = "run"
     CATEGORY = "XLJ/Veo3"
+    OUTPUT_NODE = True
 
     def run(self, **kwargs):
         creator_kwargs = {k: v for k, v in kwargs.items() if k in XLJVeoText2Video.INPUT_TYPES()["required"] or k in XLJVeoText2Video.INPUT_TYPES()["optional"]}
@@ -256,6 +276,7 @@ class XLJVeoImage2VideoAndWait:
     RETURN_NAMES = ("状态", "视频 URL", "增强后提示词", "任务 ID")
     FUNCTION = "run"
     CATEGORY = "XLJ/Veo3"
+    OUTPUT_NODE = True
 
     def run(self, **kwargs):
         creator_kwargs = {}

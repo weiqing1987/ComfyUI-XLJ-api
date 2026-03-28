@@ -1,0 +1,316 @@
+{
+  "id": "f2b53179-8cb4-4bb4-8dbc-6f08eb48d603",
+  "revision": 0,
+  "last_node_id": 79,
+  "last_link_id": 91,
+  "nodes": [
+    {
+      "id": 77,
+      "type": "XLJDownloadVideo",
+      "pos": [1590, 80],
+      "size": [270, 150],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "widget": { "name": "video_url" },
+          "link": 87
+        }
+      ],
+      "outputs": [
+        { "name": "path", "type": "STRING", "links": null },
+        { "name": "status", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJDownloadVideo"
+      },
+      "widgets_values": ["", "output/xlj_video", "", 180]
+    },
+    {
+      "id": 65,
+      "type": "LoadImage",
+      "pos": [-1032, 340],
+      "size": [560, 320],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": { "name": "image" },
+          "link": null
+        },
+        {
+          "label": "upload",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": { "name": "upload" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "image", "name": "IMAGE", "type": "IMAGE", "links": [88] },
+        { "label": "mask", "name": "MASK", "type": "MASK", "links": null }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.5.1",
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": ["", "image"]
+    },
+    {
+      "id": 78,
+      "type": "XLJUploadToImageHost",
+      "pos": [117, 67],
+      "size": [270, 150],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        { "name": "image", "type": "IMAGE", "link": 88 }
+      ],
+      "outputs": [
+        { "name": "image_url", "type": "STRING", "links": [89] },
+        { "name": "created_at", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJUploadToImageHost"
+      },
+      "widgets_values": [
+        "https://imageproxy.zhongzhuan.chat/api/upload",
+        "jpeg",
+        100,
+        30
+      ]
+    },
+    {
+      "id": 62,
+      "type": "LoadImage",
+      "pos": [-396, 843],
+      "size": [560, 320],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": { "name": "image" },
+          "link": null
+        },
+        {
+          "label": "upload",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": { "name": "upload" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "image", "name": "IMAGE", "type": "IMAGE", "links": [90] },
+        { "label": "mask", "name": "MASK", "type": "MASK", "links": null }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.5.1",
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {
+          "image": true,
+          "upload": true
+        }
+      },
+      "widgets_values": ["", "image"]
+    },
+    {
+      "id": 66,
+      "type": "ttN text",
+      "pos": [-66, 299],
+      "size": [400, 200],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": { "name": "text" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "text", "name": "text", "type": "STRING", "links": [85] }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_tinyterranodes",
+        "ver": "c669e6cff81ba44cce91c9eee3236c1a64725394",
+        "Node name for S&R": "ttN text",
+        "widget_ue_connectable": {},
+        "ttNnodeVersion": "1.0.0"
+      },
+      "widgets_values": [
+        "First-person sword flight through clouds and mountain peaks, cinematic forward motion, strong sense of speed, crisp detail.",
+        [false, true]
+      ]
+    },
+    {
+      "id": 79,
+      "type": "XLJUploadToImageHost",
+      "pos": [135, 595],
+      "size": [270, 150],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        { "name": "image", "type": "IMAGE", "link": 90 }
+      ],
+      "outputs": [
+        { "name": "image_url", "type": "STRING", "links": [91] },
+        { "name": "created_at", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJUploadToImageHost"
+      },
+      "widgets_values": [
+        "https://imageproxy.zhongzhuan.chat/api/upload",
+        "jpeg",
+        100,
+        30
+      ]
+    },
+    {
+      "id": 75,
+      "type": "XLJViduQCreateVideo",
+      "pos": [550, 256],
+      "size": [400, 420],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": { "name": "prompt" },
+          "link": 85
+        },
+        {
+          "name": "image_1",
+          "shape": 7,
+          "type": "STRING",
+          "widget": { "name": "image_1" },
+          "link": 89
+        },
+        {
+          "name": "image_2",
+          "shape": 7,
+          "type": "STRING",
+          "widget": { "name": "image_2" },
+          "link": 91
+        }
+      ],
+      "outputs": [
+        { "name": "task_id", "type": "STRING", "links": [86] },
+        { "name": "status", "type": "STRING", "links": null },
+        { "name": "enhanced_prompt", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJViduQCreateVideo"
+      },
+      "widgets_values": [
+        "",
+        "viduq2",
+        "16:9",
+        "",
+        "",
+        "",
+        "",
+        5,
+        "",
+        0
+      ]
+    },
+    {
+      "id": 76,
+      "type": "XLJViduQQueryVideo",
+      "pos": [1178, 80],
+      "size": [290, 240],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "widget": { "name": "task_id" },
+          "link": 86
+        }
+      ],
+      "outputs": [
+        { "name": "task_id", "type": "STRING", "links": null },
+        { "name": "status", "type": "STRING", "links": null },
+        { "name": "video_url", "type": "STRING", "links": [87] },
+        { "name": "enhanced_prompt", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJViduQQueryVideo"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "https://xinlingjunai.cn",
+        true,
+        10,
+        1800
+      ]
+    }
+  ],
+  "links": [
+    [85, 66, 0, 75, 0, "STRING"],
+    [86, 75, 0, 76, 0, "STRING"],
+    [87, 76, 2, 77, 0, "STRING"],
+    [88, 65, 0, 78, 0, "IMAGE"],
+    [89, 78, 0, 75, 1, "STRING"],
+    [90, 62, 0, 79, 0, "IMAGE"],
+    [91, 79, 0, 75, 2, "STRING"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.2794145953766204,
+      "offset": [2205.170952930066, 663.7949698167313]
+    },
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "workflowRendererVersion": "LG",
+    "frontendVersion": "1.37.11",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

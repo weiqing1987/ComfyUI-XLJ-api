@@ -5,8 +5,33 @@ Utils 工具节点 - 信陵君 AI
 import json
 import requests
 from pathlib import Path
+import folder_paths
 from ..xlj_utils import to_pil_from_comfy, save_image_to_buffer, http_headers_multipart, API_BASE
 from .csv_reader import XLJCSVBatchReader
+
+
+def _build_video_preview_result(file_path: Path):
+    resolved = file_path.resolve()
+    base_dirs = (
+        ("output", Path(folder_paths.get_output_directory()).resolve()),
+        ("temp", Path(folder_paths.get_temp_directory()).resolve()),
+        ("input", Path(folder_paths.get_input_directory()).resolve()),
+    )
+
+    for folder_type, base_dir in base_dirs:
+        try:
+            relative_path = resolved.relative_to(base_dir)
+        except ValueError:
+            continue
+
+        subfolder = "" if str(relative_path.parent) == "." else str(relative_path.parent).replace("\\", "/")
+        return {
+            "filename": relative_path.name,
+            "subfolder": subfolder,
+            "type": folder_type,
+        }
+
+    return None
 
 
 class XLJUploadToImageHost:
@@ -30,6 +55,7 @@ class XLJUploadToImageHost:
     RETURN_NAMES = ("图片 URL", "创建时间")
     FUNCTION = "upload"
     CATEGORY = "XLJ/Utils"
+    OUTPUT_NODE = True
 
     @classmethod
     def INPUT_LABELS(cls):
@@ -87,6 +113,7 @@ class XLJDownloadVideo:
     RETURN_NAMES = ("本地路径", "状态")
     FUNCTION = "download"
     CATEGORY = "XLJ/Utils"
+    OUTPUT_NODE = True
 
     @classmethod
     def INPUT_LABELS(cls):
@@ -102,8 +129,12 @@ class XLJDownloadVideo:
         import time
         from pathlib import Path
 
-        if not video_url:
-            raise RuntimeError("视频 URL 不能为空")
+        if not video_url or video_url.strip() == "":
+            print("[ComfyUI-XLJ-api] 信陵君 下载失败：视频 URL 为空")
+            print("[ComfyUI-XLJ-api] 信陵君 请确认:")
+            print("[ComfyUI-XLJ-api] 信陵君 1. 查询节点返回的状态是否为 'completed'")
+            print("[ComfyUI-XLJ-api] 信陵君 2. 查询节点的'视频 URL'输出是否已连接")
+            return ("", "error: video_url is empty")
 
         # 创建保存目录
         save_path = Path(save_dir)
@@ -125,6 +156,15 @@ class XLJDownloadVideo:
                     f.write(chunk)
 
             print(f"[ComfyUI-XLJ-api] 信陵君 视频已保存到：{file_path}")
+            preview_result = _build_video_preview_result(file_path)
+            if preview_result is not None:
+                return {
+                    "ui": {
+                        "images": [preview_result],
+                        "animated": (True,),
+                    },
+                    "result": (str(file_path), "success")
+                }
             return (str(file_path), "success")
 
         except Exception as e:

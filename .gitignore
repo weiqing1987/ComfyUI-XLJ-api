@@ -47,3 +47,5 @@ Thumbs.db
 output/
 *.json
 !config.json
+!workflows/
+!workflows/*.json

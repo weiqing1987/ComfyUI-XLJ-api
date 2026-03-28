@@ -8,6 +8,10 @@ import requests
 from ..xlj_utils import (env_or, ensure_list_from_urls,
                          http_headers_json, raise_for_bad_status, json_get, API_BASE)
 
+# 禁用代理
+session = requests.Session()
+session.trust_env = False
+
 
 class XLJSoraCreateVideo:
     """创建 Sora 视频任务"""
@@ -74,7 +78,7 @@ class XLJSoraCreateVideo:
         }
 
         try:
-            resp = requests.post(endpoint, headers=http_headers_json(api_key), data=json.dumps(payload), timeout=int(timeout))
+            resp = session.post(endpoint, headers=http_headers_json(api_key), data=json.dumps(payload), timeout=int(timeout))
             raise_for_bad_status(resp, "Sora create failed")
             data = resp.json()
         except Exception as e:
@@ -111,6 +115,7 @@ class XLJSoraQueryTask:
     RETURN_NAMES = ("状态", "视频 URL", "GIF URL", "缩略图 URL", "原始响应 JSON")
     FUNCTION = "query"
     CATEGORY = "XLJ/Sora2"
+    OUTPUT_NODE = True
 
     @classmethod
     def INPUT_LABELS(cls):
@@ -130,7 +135,7 @@ class XLJSoraQueryTask:
             last_err = None
             for attempt in range(3):
                 try:
-                    resp = requests.get(endpoint, headers=http_headers_json(api_key), params={"id": task_id}, timeout=60)
+                    resp = session.get(endpoint, headers=http_headers_json(api_key), params={"id": task_id}, timeout=60)
                     raise_for_bad_status(resp, "Sora query failed")
                     data = resp.json()
                     status = data.get("status") or json_get(data, "detail.status") or ""
@@ -156,18 +161,34 @@ class XLJSoraQueryTask:
         deadline = time.time() + int(timeout_sec)
         last_raw = ""
         poll_count = 0
+        last_status = ""
         while time.time() < deadline:
             poll_count += 1
             status, video_url, gif_url, thumbnail_url, raw = once()
             last_raw = raw
+            last_status = status
             print(f"[ComfyUI-XLJ-api] 信陵君 Sora - 第 {poll_count} 次查询：状态={status}")
-            if status in ("completed", "failed"):
-                print(f"[ComfyUI-XLJ-api] 信陵君 Sora - 任务完成：{status}")
+            if video_url:
+                print(f"[ComfyUI-XLJ-api] 信陵君 Sora - 视频 URL: {video_url}")
+
+            # 任务完成且有 URL，返回结果
+            if status == "completed" and video_url:
+                print(f"[ComfyUI-XLJ-api] 信陵君 Sora - 任务完成！")
                 return (status, video_url, gif_url, thumbnail_url, raw)
+
+            # 任务失败
+            if status == "failed":
+                raise RuntimeError(f"Sora 视频生成失败，任务 ID: {task_id}")
+
+            # 继续轮询
+            print(f"[ComfyUI-XLJ-api] 信陵君 Sora - 任务进行中... 已等待 {poll_count * poll_interval_sec}/{timeout_sec} 秒")
             time.sleep(int(poll_interval_sec))
 
         print(f"[ComfyUI-XLJ-api] 信陵君 Sora - 轮询超时")
-        return ("timeout", "", "", "", last_raw or json.dumps({"error": "timeout"}, ensure_ascii=False))
+        raise RuntimeError(
+            f"Sora 视频生成超时（等待了 {timeout_sec} 秒）。"
+            f"任务 ID: {task_id}，最后状态：{last_status}，可使用查询节点继续检查状态。"
+        )
 
 
 class XLJSoraCreateAndWait:
@@ -186,6 +207,7 @@ class XLJSoraCreateAndWait:
     RETURN_NAMES = ("状态", "视频 URL", "GIF URL", "缩略图 URL", "任务 ID")
     FUNCTION = "run"
     CATEGORY = "XLJ/Sora2"
+    OUTPUT_NODE = True
 
     def run(self, **kwargs):
         creator_kwargs = {k: v for k, v in kwargs.items() if k in XLJSoraCreateVideo.INPUT_TYPES()["required"] or k in XLJSoraCreateVideo.INPUT_TYPES()["optional"]}
