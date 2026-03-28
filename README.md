@@ -2,9 +2,9 @@
 
 信陵君 AI API 的 ComfyUI 节点插件。
 
-默认 API 站点：`https://xinlingjunai.cn/`
+API 站点：`https://xinlingjunai.cn/`
 
-插件内部默认并锁定到 `https://xinlingjunai.cn/`，仓库内示例工作流也按这个站点配置。导入工作流后，通常只需要填写 `api_key` 就可以直接使用。
+导入工作流后，通常只需要填写 `api_key` 就可以直接使用。
 
 ## 功能
 
@@ -32,10 +32,9 @@ pip install -r requirements.txt
 
 ## API 站点
 
-- 默认站点：`https://xinlingjunai.cn/`
-- 插件内部锁定 API Base：`https://xinlingjunai.cn`
-- 示例工作流默认按这个站点编排
-- 如果你改过节点里的 `api_base`，建议改回默认值
+- API 网站：`https://xinlingjunai.cn/`
+- 使用前请先准备可用的 `api_key`
+- 节点里的 `api_base` 请按你的实际接口配置填写
 
 ## API Key 配置
 
