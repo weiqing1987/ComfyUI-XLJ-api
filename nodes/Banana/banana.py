@@ -166,8 +166,8 @@ class XLJBananaCreateImage:
                 except Exception as e:
                     print(f"[ComfyUI-XLJ-api] 信陵君 Banana 警告：转换参考图失败：{e}")
 
-        # 构建请求
-        endpoint = f"{api_base}/v1/images/generate"
+        # 构建请求 - 使用 Gemini 原生端点
+        endpoint = f"{api_base}/v1beta/models/{model_name}:generateContent"
         headers = http_headers_json(api_key)
 
         # 构建 contents（Gemini API 格式）

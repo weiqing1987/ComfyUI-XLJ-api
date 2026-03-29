@@ -26,6 +26,9 @@ ComfyUI-XLJ-api/
 │   ├── ViduQ/
 │   │   ├── __init__.py
 │   │   └── viduq.py         # ViduQ 视频生成节点
+│   ├── Banana/
+│   │   ├── __init__.py      # Banana 图像生成节点注册
+│   │   └── banana.py        # Banana/Gemini 图像生成节点
 │   └── Utils/
 │       ├── __init__.py      # 工具节点（上传、下载、CSV 读取）
 │       └── csv_reader.py
@@ -82,7 +85,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
 ### 5. Emoji 前缀约定
 
-- 🎬 视频生成节点
+- 🎬 视频生成节点 (Grok, Veo3, Sora2, ViduQ)
+- 🍌 Banana 图像生成节点
 - 🖼️ 图片相关
 - 🔍 查询节点
 - ⚡ 一键/快速节点
@@ -97,6 +101,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 POST /v1/video/create     # 创建视频任务
 GET  /v1/video/query      # 查询任务状态
 POST /v1/upload           # 上传图片
+POST /v1/images/generate  # Banana 图像生成
 ```
 
 ## 错误处理
