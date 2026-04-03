@@ -29,6 +29,8 @@ ComfyUI-XLJ-api/
 │   ├── Banana/
 │   │   ├── __init__.py      # Banana 图像生成节点注册
 │   │   └── banana.py        # Banana/Gemini 图像生成节点
+│   ├── VideoReverse/
+│   │   └── __init__.py      # 视频反推节点（Seedance 提示词生成）
 │   └── Utils/
 │       ├── __init__.py      # 工具节点（上传、下载、CSV 读取）
 │       └── csv_reader.py
@@ -87,6 +89,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
 - 🎬 视频生成节点 (Grok, Veo3, Sora2, ViduQ)
 - 🍌 Banana 图像生成节点
+- 🎬 视频反推节点 (VideoReverse)
 - 🖼️ 图片相关
 - 🔍 查询节点
 - ⚡ 一键/快速节点
