@@ -69,10 +69,11 @@ class XLJGeminiText:
                     "multiline": True,
                     "tooltip": "系统提示词"
                 }),
+                "api_key": ("STRING", {
+                    "default": "",
+                    "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"
+                }),
             },
-            "hidden": {
-                "api_key": ("STRING", {"default": ""}),
-            }
         }
 
     RETURN_TYPES = ("STRING",)
