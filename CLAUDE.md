@@ -29,6 +29,12 @@ ComfyUI-XLJ-api/
 │   ├── Banana/
 │   │   ├── __init__.py      # Banana 图像生成节点注册
 │   │   └── banana.py        # Banana/Gemini 图像生成节点
+│   ├── Seedream/
+│   │   ├── __init__.py      # Seedream 即梦图像生成节点注册
+│   │   └── seedream.py      # Seedream 图像生成节点
+│   ├── GPT/
+│   │   ├── __init__.py      # GPT 文本处理节点注册
+│   │   └── gpt.py           # GPT 文本处理节点（文档读取）
 │   ├── VideoReverse/
 │   │   └── __init__.py      # 视频反推节点（Seedance 提示词生成）
 │   └── Utils/
@@ -89,6 +95,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
 - 🎬 视频生成节点 (Grok, Veo3, Sora2, ViduQ)
 - 🍌 Banana 图像生成节点
+- 🖼️ Seedream 即梦图像生成节点
+- 📝 GPT 文本处理节点
 - 🎬 视频反推节点 (VideoReverse)
 - 🖼️ 图片相关
 - 🔍 查询节点
@@ -105,6 +113,8 @@ POST /v1/video/create     # 创建视频任务
 GET  /v1/video/query      # 查询任务状态
 POST /v1/upload           # 上传图片
 POST /v1/images/generate  # Banana 图像生成
+POST /v1/images/generations  # Seedream 图像生成
+POST /v1/chat/completions    # GPT 文本处理
 ```
 
 ## 错误处理

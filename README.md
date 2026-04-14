@@ -13,6 +13,8 @@ API 站点：`https://xinlingjunai.cn/`
 - Sora2 图生视频
 - ViduQ 文生视频 / 图生视频
 - Banana 图像生成 / 多轮对话编辑
+- Seedream 即梦图像生成
+- GPT 文本处理
 - 查询任务状态
 - 一键等待完成
 - 视频下载与预览
@@ -57,6 +59,8 @@ XLJ_API_KEY=your_api_key_here
 - `veo3+图生视频-API调用.json`
 - `viduq+图生视频-API调用.json`
 - `banana+参考图出图-API调用.json`
+- `seedream+参考图出图-API调用.json`
+- `gpt+文本处理-API调用.json`
 
 ## 节点列表
 
@@ -91,6 +95,14 @@ XLJ_API_KEY=your_api_key_here
 
 - `XLJBananaCreateImage`
 - `XLJBananaMultiTurnChat`
+
+### Seedream
+
+- `XLJSeedreamCreateImage`
+
+### GPT
+
+- `XLJGPTTextProcessor`
 
 ### Utils
 
@@ -136,6 +148,20 @@ XLJ_API_KEY=your_api_key_here
 - `gemini-3-pro-image-preview`
 - `gemini-2.5-flash-image`
 - `gemini-3.1-flash-image-preview`
+
+### Seedream (即梦)
+
+- `doubao-seedream-5-0-260128`
+- `doubao-seedream-4-0-250828`
+- `doubao-seedream-4-5-251128`
+- `doubao-seededit-3-0-i2i-250628`
+- `doubao-seedream-3-0-t2i-250415`
+
+### GPT
+
+- `gpt-5.4`
+- `gpt-5.4-pro`
+- `gpt-5.4-nano`
 
 ## 常见问题
 

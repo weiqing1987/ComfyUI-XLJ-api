@@ -1,0 +1,153 @@
+{
+  "id": "seedream-api-workflow-001",
+  "revision": 0,
+  "last_node_id": 5,
+  "last_link_id": 4,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": [-600, 180],
+      "size": [560, 320],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": { "name": "image" },
+          "link": null
+        },
+        {
+          "label": "upload",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": { "name": "upload" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "image", "name": "IMAGE", "type": "IMAGE", "links": [4] },
+        { "label": "mask", "name": "MASK", "type": "MASK", "links": null }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.5.1",
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": ["", "image"]
+    },
+    {
+      "id": 2,
+      "type": "ttN text",
+      "pos": [-580, 620],
+      "size": [520, 200],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": { "name": "text" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "text", "name": "text", "type": "STRING", "links": [2] }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_tinyterranodes",
+        "ver": "c669e6cff81ba44cce91c9eee3236c1a64725394",
+        "Node name for S&R": "ttN text",
+        "widget_ue_connectable": {},
+        "ttNnodeVersion": "1.0.0"
+      },
+      "widgets_values": [
+        "一只可爱的小猫坐在窗台上，阳光洒在它身上，温暖的色调，高清摄影风格。",
+        [false, true]
+      ]
+    },
+    {
+      "id": 3,
+      "type": "XLJSeedreamCreateImage",
+      "pos": [100, 280],
+      "size": [440, 380],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": { "name": "prompt" },
+          "link": 2
+        },
+        {
+          "name": "image_input",
+          "type": "IMAGE",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        { "name": "image", "type": "IMAGE", "links": [3] },
+        { "name": "状态信息", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "1.0.0",
+        "widget_ue_connectable": {},
+        "Node name for S&R": "XLJSeedreamCreateImage"
+      },
+      "widgets_values": [
+        "doubao-seedream-5-0-260128",
+        "",
+        "",
+        "",
+        "1:1",
+        "2K",
+        0
+      ]
+    },
+    {
+      "id": 4,
+      "type": "SaveImage",
+      "pos": [700, 320],
+      "size": [320, 80],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        { "name": "images", "type": "IMAGE", "link": 3 }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.5.1",
+        "Node name for S&R": "SaveImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": ["seedream/ComfyUI"]
+    }
+  ],
+  "links": [
+    [2, 2, 0, 3, 0, "STRING"],
+    [3, 3, 0, 4, 0, "IMAGE"],
+    [4, 1, 0, 3, 5, "IMAGE"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.42,
+      "offset": [900, 400]
+    },
+    "ue_links": [],
+    "links_added_by_ue": [],
+    "frontendVersion": "1.37.11"
+  },
+  "version": 0.4
+}
