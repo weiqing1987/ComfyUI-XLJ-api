@@ -18,8 +18,8 @@ def env_or(value: str, env_name: str) -> str:
         return value
     return os.environ.get(env_name, "").strip()
 
-def to_pil_from_comfy(image_any, index: int = 0) -> Image.Image:
-    """将 ComfyUI IMAGE 转换为 PIL.Image"""
+def _to_numpy_from_comfy(image_any, index: int = 0):
+    """将 ComfyUI 常见输入统一展开为 numpy 数组或原对象。"""
     try:
         import torch
         is_torch = True
@@ -32,14 +32,43 @@ def to_pil_from_comfy(image_any, index: int = 0) -> Image.Image:
         if isinstance(arr, torch.Tensor):
             if arr.dim() == 4:
                 arr = arr[index]
+            elif arr.dim() == 3 and arr.shape[0] == 1:
+                arr = arr[0]
             arr = arr.detach().cpu().numpy()
 
     if isinstance(arr, np.ndarray):
         if arr.ndim == 4:
             arr = arr[index]
-        if arr.dtype != np.uint8:
-            arr = np.clip(arr * 255.0, 0, 255).astype(np.uint8)
+        elif arr.ndim == 3 and arr.shape[0] == 1 and arr.shape[-1] not in (1, 3, 4):
+            arr = arr[0]
+
+    return arr
+
+def _normalize_uint8(arr: np.ndarray) -> np.ndarray:
+    """将 0-1 浮点或 0-255 数组统一转换为 uint8。"""
+    if arr.dtype == np.uint8:
+        return arr
+
+    arr = arr.astype(np.float32)
+    arr_max = float(arr.max()) if arr.size else 0.0
+    if arr_max <= 1.0:
+        arr = arr * 255.0
+    return np.clip(arr, 0, 255).astype(np.uint8)
+
+def to_pil_from_comfy(image_any, index: int = 0) -> Image.Image:
+    """将 ComfyUI IMAGE 转换为 PIL.Image"""
+    arr = _to_numpy_from_comfy(image_any, index=index)
+
+    if isinstance(arr, np.ndarray):
+        arr = _normalize_uint8(arr)
+        if arr.ndim == 2:
+            return Image.fromarray(arr, mode="L")
         if arr.ndim == 3 and arr.shape[2] in (1, 3, 4):
+            if arr.shape[2] == 1:
+                arr = np.repeat(arr, 3, axis=2)
+            return Image.fromarray(arr)
+        if arr.ndim == 3 and arr.shape[0] in (1, 3, 4):
+            arr = np.moveaxis(arr, 0, -1)
             if arr.shape[2] == 1:
                 arr = np.repeat(arr, 3, axis=2)
             return Image.fromarray(arr)
@@ -49,6 +78,29 @@ def to_pil_from_comfy(image_any, index: int = 0) -> Image.Image:
         return arr
 
     raise ValueError("无法将输入转换为 PIL.Image")
+
+def to_mask_rgba_pil_from_comfy(mask_any, index: int = 0) -> Image.Image:
+    """将 ComfyUI MASK 转换为带 alpha 通道的 RGBA 遮罩图。"""
+    arr = _to_numpy_from_comfy(mask_any, index=index)
+
+    if isinstance(arr, Image.Image):
+        mask_l = arr.convert("L")
+    elif isinstance(arr, np.ndarray):
+        if arr.ndim == 3 and arr.shape[2] in (1, 3, 4):
+            arr = arr[..., 0]
+        elif arr.ndim == 3 and arr.shape[0] in (1, 3, 4):
+            arr = np.moveaxis(arr, 0, -1)[..., 0]
+        elif arr.ndim != 2:
+            raise ValueError(f"不支持的 MASK 维度: {arr.shape}")
+        mask_l = Image.fromarray(_normalize_uint8(arr), mode="L")
+    else:
+        raise ValueError("无法将输入转换为 MASK 图像")
+
+    # ComfyUI MASK 中 1 表示要编辑区域；编辑 API 的遮罩通常需要透明区域表示可编辑。
+    alpha = Image.eval(mask_l, lambda px: 255 - px)
+    rgba = Image.new("RGBA", mask_l.size, (255, 255, 255, 255))
+    rgba.putalpha(alpha)
+    return rgba
 
 def save_image_to_buffer(pil: Image.Image, fmt: str, quality: int) -> io.BytesIO:
     """保存 PIL 到内存缓冲"""

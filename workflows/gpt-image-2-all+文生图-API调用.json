@@ -1,0 +1,74 @@
+{
+  "id": "gpt-t2i-v3",
+  "last_node_id": 20,
+  "last_link_id": 19,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "ttN text",
+      "pos": [-800, 300],
+      "size": [500, 150],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [{"name": "text", "type": "STRING", "widget": {"name": "text"}}],
+      "outputs": [
+        {"name": "text", "type": "STRING", "links": [1], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "ttN text"},
+      "widgets_values": [
+        "A beautiful sunset over the ocean with golden light reflecting on the waves",
+        [false, true]
+      ]
+    },
+    {
+      "id": 2,
+      "type": "XLJGPTImageTextToImage",
+      "pos": [-200, 250],
+      "size": [420, 360],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "prompt", "type": "STRING", "widget": {"name": "prompt"}, "link": 1}
+      ],
+      "outputs": [
+        {"name": "image", "type": "IMAGE", "links": [2], "slot_index": 0},
+        {"name": "status", "type": "STRING", "links": null}
+      ],
+      "properties": {"Node name for S&R": "XLJGPTImageTextToImage"},
+      "widgets_values": [
+        "gpt-image-2-all",
+        "A beautiful sunset over the ocean",
+        "1:1",
+        "high",
+        "",
+        "",
+        "",
+        0,
+        ""
+      ]
+    },
+    {
+      "id": 3,
+      "type": "PreviewImage",
+      "pos": [300, 300],
+      "size": [400, 400],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [{"name": "images", "type": "IMAGE", "link": 2}],
+      "properties": {"Node name for S&R": "PreviewImage"}
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "STRING"],
+    [2, 2, 0, 3, 0, "IMAGE"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {"scale": 0.5, "offset": [900, 400]}
+  },
+  "version": 0.4
+}
