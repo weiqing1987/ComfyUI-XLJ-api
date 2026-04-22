@@ -1,96 +1,232 @@
 {
-  "id": "gpt-i2i-v3",
-  "last_node_id": 20,
-  "last_link_id": 19,
+  "id": "73d652f0-4bf9-4269-b001-6daebb997fbe",
+  "revision": 0,
+  "last_node_id": 4,
+  "last_link_id": 5,
   "nodes": [
     {
-      "id": 10,
-      "type": "LoadImage",
-      "pos": [-800, 200],
-      "size": [500, 350],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [
-        {"name": "image", "type": "COMBO", "widget": {"name": "image"}},
-        {"name": "upload", "type": "IMAGEUPLOAD", "widget": {"name": "upload"}}
+      "id": 3,
+      "type": "PreviewImage",
+      "pos": [
+        750,
+        50
       ],
-      "outputs": [
-        {"name": "IMAGE", "type": "IMAGE", "links": [15], "slot_index": 0},
-        {"name": "MASK", "type": "MASK", "links": null}
+      "size": [
+        210,
+        246
       ],
-      "properties": {"Node name for S&R": "LoadImage"},
-      "widgets_values": ["", "image"]
-    },
-    {
-      "id": 11,
-      "type": "ttN text",
-      "pos": [-800, 650],
-      "size": [500, 150],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [{"name": "text", "type": "STRING", "widget": {"name": "text"}}],
-      "outputs": [
-        {"name": "text", "type": "STRING", "links": [16], "slot_index": 0}
-      ],
-      "properties": {"Node name for S&R": "ttN text"},
-      "widgets_values": [
-        "Transform this into a watercolor painting style",
-        [false, true]
-      ]
-    },
-    {
-      "id": 15,
-      "type": "XLJGPTImageImageToImage",
-      "pos": [-200, 300],
-      "size": [420, 420],
       "flags": {},
       "order": 2,
       "mode": 0,
       "inputs": [
-        {"name": "prompt", "type": "STRING", "widget": {"name": "prompt"}, "link": 16},
-        {"name": "image_input", "type": "IMAGE", "link": 15}
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 5
+        }
       ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.17.2",
+        "Node name for S&R": "PreviewImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": [
+        50,
+        50
+      ],
+      "size": [
+        315,
+        314
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
       "outputs": [
-        {"name": "image", "type": "IMAGE", "links": [17], "slot_index": 0},
-        {"name": "status", "type": "STRING", "links": null}
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            1,
+            4
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
       ],
-      "properties": {"Node name for S&R": "XLJGPTImageImageToImage"},
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.17.2",
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {},
+        "#sdppp_variant": "default",
+        "#sdppp_simple_content": "canvas",
+        "#sdppp_simple_mask": "canvas",
+        "#sdppp_simple_boundary": "canvas",
+        "#sdppp_label": ""
+      },
       "widgets_values": [
-        "gpt-image-2-all",
-        "Transform this into a watercolor painting style",
-        "1:1",
-        "high",
-        "edit",
-        "",
-        "",
-        "jpeg",
-        0,
-        0.8
+        "example.png",
+        "image"
       ]
     },
     {
-      "id": 16,
-      "type": "PreviewImage",
-      "pos": [300, 300],
-      "size": [400, 400],
+      "id": 2,
+      "type": "XLJGPTImageImageToImage",
+      "pos": [
+        400,
+        50
+      ],
+      "size": [
+        315,
+        478
+      ],
       "flags": {},
-      "order": 3,
+      "order": 1,
       "mode": 0,
-      "inputs": [{"name": "images", "type": "IMAGE", "link": 17}],
-      "properties": {"Node name for S&R": "PreviewImage"}
+      "inputs": [
+        {
+          "name": "image_input",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 4
+        },
+        {
+          "name": "image_input_2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_input_3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_input_4",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_input_5",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_input_6",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_mask",
+          "shape": 7,
+          "type": "MASK",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            2,
+            5
+          ]
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "ver": "370d1c23db3f3c42db76d08ad9a653240ba0e9b6",
+        "Node name for S&R": "XLJGPTImageImageToImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "Edit this image",
+        "",
+        "1:1",
+        "auto",
+        "edit",
+        "",
+        0,
+        "png",
+        0,
+        "randomize",
+        0.8,
+        [
+          false,
+          true
+        ],
+        [
+          false,
+          true
+        ]
+      ]
     }
   ],
   "links": [
-    [15, 10, 0, 15, 1, "IMAGE"],
-    [16, 11, 0, 15, 0, "STRING"],
-    [17, 15, 0, 16, 0, "IMAGE"]
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      4,
+      1,
+      0,
+      2,
+      0,
+      "IMAGE"
+    ],
+    [
+      5,
+      2,
+      0,
+      3,
+      0,
+      "IMAGE"
+    ]
   ],
   "groups": [],
   "config": {},
   "extra": {
-    "ds": {"scale": 0.5, "offset": [900, 400]}
+    "workflowRendererVersion": "LG",
+    "ue_links": [],
+    "ds": {
+      "scale": 1.167184107045001,
+      "offset": [
+        147.85928813431204,
+        175.85553160872092
+      ]
+    },
+    "frontendVersion": "1.41.20",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
   },
   "version": 0.4
 }
