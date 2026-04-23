@@ -1,47 +1,12 @@
 {
-  "id": "gpt-image-edit-workflow",
-  "revision": 3,
-  "last_node_id": 5,
-  "last_link_id": 5,
+  "last_node_id": 3,
+  "last_link_id": 2,
   "nodes": [
-    {
-      "id": 3,
-      "type": "PreviewImage",
-      "pos": [
-        700,
-        50
-      ],
-      "size": [
-        210,
-        246
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 3
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "Node name for S&R": "PreviewImage"
-      },
-      "widgets_values": []
-    },
     {
       "id": 1,
       "type": "LoadImage",
-      "pos": [
-        50,
-        50
-      ],
-      "size": [
-        315,
-        314
-      ],
+      "pos": [50, 50],
+      "size": [315, 314],
       "flags": {},
       "order": 0,
       "mode": 0,
@@ -51,9 +16,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "slot_index": 0,
-          "links": [
-            1
-          ]
+          "links": [1]
         },
         {
           "name": "MASK",
@@ -64,202 +27,111 @@
       "properties": {
         "Node name for S&R": "LoadImage"
       },
-      "widgets_values": [
-        "example.png",
-        "image"
-      ]
+      "widgets_values": ["example.png", "image"]
     },
     {
       "id": 2,
       "type": "XLJGPTImageImageToImage",
-      "pos": [
-        400,
-        50
-      ],
-      "size": [
-        315,
-        350
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image_input",
-          "shape": 7,
-          "type": "*",
-          "link": 5
-        },
-        {
-          "name": "image_input_2",
-          "shape": 7,
-          "type": "*",
-          "link": null
-        },
-        {
-          "name": "image_input_3",
-          "shape": 7,
-          "type": "*",
-          "link": null
-        },
-        {
-          "name": "image_input_4",
-          "shape": 7,
-          "type": "*",
-          "link": null
-        },
-        {
-          "name": "image_input_5",
-          "shape": 7,
-          "type": "*",
-          "link": null
-        },
-        {
-          "name": "image_mask",
-          "shape": 7,
-          "type": "MASK",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "slot_index": 0,
-          "links": [
-            3
-          ]
-        },
-        {
-          "name": "status",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
-        "Node name for S&R": "XLJGPTImageImageToImage"
-      },
-      "widgets_values": [
-        "gpt-image-2-all",
-        "Edit this image",
-        "1:1",
-        "auto",
-        "edit",
-        "",
-        "",
-        0,
-        "png",
-        0,
-        0.8
-      ]
-    },
-    {
-      "id": 4,
-      "type": "XLJUploadToImageHost",
-      "pos": [
-        50,
-        400
-      ],
-      "size": [
-        315,
-        150
-      ],
+      "pos": [400, 50],
+      "size": [520, 600],
       "flags": {},
       "order": 1,
       "mode": 0,
       "inputs": [
         {
-          "name": "image",
+          "name": "image_01",
           "type": "IMAGE",
           "link": 1
+        },
+        {
+          "name": "image_02",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_03",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_04",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_05",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
         }
       ],
       "outputs": [
         {
-          "name": "图片 URL",
-          "type": "STRING",
+          "name": "image",
+          "type": "IMAGE",
           "slot_index": 0,
-          "links": [
-            5
-          ]
+          "links": [2]
         },
         {
-          "name": "创建时间",
+          "name": "response",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "image_urls",
           "type": "STRING",
           "links": null
         }
       ],
       "properties": {
-        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
-        "Node name for S&R": "XLJUploadToImageHost"
+        "Node name for S&R": "XLJGPTImageImageToImage"
       },
       "widgets_values": [
-        "https://imageproxy.zhongzhuan.chat/api/upload",
-        "jpeg",
-        85,
-        30
+        "",
+        "编辑这张图片，保持主体不变",
+        "AUTO",
+        "gpt-image-2-all",
+        "https://yunwu.ai",
+        "chat_completions (推荐)",
+        "AUTO",
+        "url",
+        0,
+        "randomize",
+        60,
+        3
       ]
     },
     {
-      "id": 5,
-      "type": "Note",
-      "pos": [
-        50,
-        600
-      ],
-      "size": [
-        315,
-        100
-      ],
+      "id": 3,
+      "type": "PreviewImage",
+      "pos": [950, 50],
+      "size": [210, 246],
       "flags": {},
-      "order": 4,
+      "order": 2,
       "mode": 0,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 2
+        }
+      ],
       "outputs": [],
-      "properties": {},
-      "widgets_values": [
-        "image_input 类型为 *，可接:\n- IMAGE (直接接图片)\n- STRING (图床URL)"
-      ]
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      },
+      "widgets_values": []
     }
   ],
   "links": [
-    [
-      1,
-      1,
-      0,
-      4,
-      0,
-      "IMAGE"
-    ],
-    [
-      3,
-      2,
-      0,
-      3,
-      0,
-      "IMAGE"
-    ],
-    [
-      5,
-      4,
-      0,
-      2,
-      0,
-      "STRING"
-    ]
+    [1, 1, 0, 2, 0, "IMAGE"],
+    [2, 2, 0, 3, 0, "IMAGE"]
   ],
   "groups": [],
   "config": {},
-  "extra": {
-    "workflowRendererVersion": "LG",
-    "ds": {
-      "scale": 0.9,
-      "offset": [
-        50,
-        50
-      ]
-    }
-  },
+  "extra": {},
   "version": 0.4
 }
