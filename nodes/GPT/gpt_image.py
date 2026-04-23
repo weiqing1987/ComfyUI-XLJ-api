@@ -381,13 +381,11 @@ class XLJGPTImageImageToImage:
                 "api_key": ("STRING", {"default": ""}),
             },
             "optional": {
-                "image_input": ("IMAGE",),
-                "image_input_2": ("IMAGE",),
-                "image_input_3": ("IMAGE",),
-                "image_input_4": ("IMAGE",),
-                "image_input_5": ("IMAGE",),
-                "image_input_6": ("IMAGE",),
-                "image_url": ("STRING", {"default": "", "multiline": False, "tooltip": "图片URL，多个URL用逗号分隔"}),
+                "image_input": ("*", {"tooltip": "图片或URL，支持 IMAGE 和 STRING 类型"}),
+                "image_input_2": ("*", {"tooltip": "图片或URL"}),
+                "image_input_3": ("*", {"tooltip": "图片或URL"}),
+                "image_input_4": ("*", {"tooltip": "图片或URL"}),
+                "image_input_5": ("*", {"tooltip": "图片或URL"}),
                 "system_prompt": ("STRING", {"default": "", "multiline": True}),
                 "output_format": (OUTPUT_FORMATS, {"default": "png"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 2147483647}),
@@ -405,13 +403,11 @@ class XLJGPTImageImageToImage:
             "quality": "Quality",
             "mode_type": "Mode",
             "api_key": "API Key",
-            "image_input": "Image 1",
-            "image_input_2": "Image 2",
-            "image_input_3": "Image 3",
-            "image_input_4": "Image 4",
-            "image_input_5": "Image 5",
-            "image_input_6": "Image 6",
-            "image_url": "图片URL",
+            "image_input": "图片/URL 1",
+            "image_input_2": "图片/URL 2",
+            "image_input_3": "图片/URL 3",
+            "image_input_4": "图片/URL 4",
+            "image_input_5": "图片/URL 5",
             "system_prompt": "System Prompt",
             "output_format": "Output Format",
             "seed": "Seed",
@@ -438,8 +434,6 @@ class XLJGPTImageImageToImage:
         image_input_3=None,
         image_input_4=None,
         image_input_5=None,
-        image_input_6=None,
-        image_url="",
         system_prompt="",
         output_format="png",
         seed=0,
@@ -455,58 +449,67 @@ class XLJGPTImageImageToImage:
         if mode_type == "variation":
             raise RuntimeError("variation is not available for this GPT-Image node")
 
-        # 处理 URL 输入（优先使用 URL）
-        url_list = []
-        if image_url and image_url.strip():
-            # 解析 URL，支持逗号分隔多个 URL
-            urls = [u.strip() for u in image_url.split(",") if u.strip()]
-            url_list.extend(urls)
-            print(f"[ComfyUI-XLJ-api] image_url input: {len(urls)} URLs")
+        # 处理混合输入（IMAGE 或 STRING/URL）
+        def process_input(input_val, idx):
+            """判断输入类型并返回 URL 或 base64"""
+            if input_val is None:
+                return None
 
-        # 处理 IMAGE 输入（转为 base64）
-        reference_pils = collect_reference_pils(
-            image_input,
-            image_input_2,
-            image_input_3,
-            image_input_4,
-            image_input_5,
-            image_input_6,
-        )
+            # 检查是否是 tensor (IMAGE 类型)
+            if isinstance(input_val, torch.Tensor):
+                pil_list = comfy_image_to_pil_list(input_val)
+                if pil_list:
+                    pil = pil_list[0]
+                    ref_image = prepare_edit_reference_image(pil, "1536x1024")
+                    buf = io.BytesIO()
+                    ref_image.save(buf, format="JPEG", quality=85)
+                    buf.seek(0)
+                    base64_str = base64.b64encode(buf.read()).decode("utf-8")
+                    print(f"[ComfyUI-XLJ-api] input[{idx}] IMAGE: {ref_image.width}x{ref_image.height}")
+                    return base64_str
 
-        # 合并 URL 和图片输入
-        total_images = len(url_list) + len(reference_pils)
-        if total_images == 0:
-            raise RuntimeError("at least one reference image or URL is required")
-        if total_images > 5:
-            raise RuntimeError(f"too many images: {total_images} (max 5, URLs + IMAGE inputs)")
+            # 检查是否是字符串 (URL)
+            if isinstance(input_val, str) and input_val.strip():
+                url = input_val.strip()
+                print(f"[ComfyUI-XLJ-api] input[{idx}] URL: {url[:60]}...")
+                return url
 
-        request_size = "auto"
+            # numpy array
+            if isinstance(input_val, np.ndarray):
+                pil_list = comfy_image_to_pil_list(input_val)
+                if pil_list:
+                    pil = pil_list[0]
+                    ref_image = prepare_edit_reference_image(pil, "1536x1024")
+                    buf = io.BytesIO()
+                    ref_image.save(buf, format="JPEG", quality=85)
+                    buf.seek(0)
+                    base64_str = base64.b64encode(buf.read()).decode("utf-8")
+                    print(f"[ComfyUI-XLJ-api] input[{idx}] IMAGE(np): {ref_image.width}x{ref_image.height}")
+                    return base64_str
+
+            return None
+
+        # 处理所有输入
+        inputs = [image_input, image_input_2, image_input_3, image_input_4, image_input_5]
+        image_list = []
+        for idx, inp in enumerate(inputs, start=1):
+            result = process_input(inp, idx)
+            if result:
+                image_list.append(result)
+
+        if not image_list:
+            raise RuntimeError("at least one image or URL is required")
+        if len(image_list) > 5:
+            raise RuntimeError(f"too many images: {len(image_list)} (max 5)")
+
         full_prompt = build_prompt(
             prompt,
             system_prompt,
             default_prompt="Edit the supplied image while preserving key subject details.",
         )
 
-        # 构建 image 数组：URL 直接用，IMAGE 转 base64
-        image_list = []
-
-        # 先添加 URL
-        for idx, url in enumerate(url_list, start=1):
-            image_list.append(url)
-            print(f"[ComfyUI-XLJ-api] image[{idx}] URL: {url[:60]}...")
-
-        # 再添加 base64 图片
-        for idx, pil_image in enumerate(reference_pils, start=len(url_list) + 1):
-            ref_image = prepare_edit_reference_image(pil_image, "1536x1024")
-            buf = io.BytesIO()
-            ref_image.save(buf, format="JPEG", quality=85)
-            buf.seek(0)
-            base64_str = base64.b64encode(buf.read()).decode("utf-8")
-            image_list.append(base64_str)
-            print(f"[ComfyUI-XLJ-api] image[{idx}]: {ref_image.width}x{ref_image.height} base64_len={len(base64_str)}")
-
         print(f"[ComfyUI-XLJ-api] GPT-Image image-to-image: {full_prompt[:60]}...")
-        print(f"[ComfyUI-XLJ-api] model={model_name} refs={len(reference_pils)} quality={quality}")
+        print(f"[ComfyUI-XLJ-api] model={model_name} images={len(image_list)} quality={quality}")
 
         # 使用 /v1/images/generations JSON endpoint
         endpoint = f"{API_BASE}/v1/images/generations"
