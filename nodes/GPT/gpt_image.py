@@ -473,48 +473,18 @@ class XLJGPTImageImageToImage:
             default_prompt="Edit the supplied image while preserving key subject details.",
         )
 
-        # 将图片转为 data URI 格式（符合文档的 URL 数组要求）
-        # 但 data URI 可能不被接受，先尝试上传到图床获取真实 URL
-        IMAGE_HOST_URL = "https://imageproxy.zhongzhuan.chat/api/upload"
-        image_urls = []
+        # 将图片转为 base64 字符串数组（纯 base64，不带 data: 前缀）
+        image_base64_list = []
 
         for idx, pil_image in enumerate(reference_pils, start=1):
-            # 压缩图片以减少上传时间
+            # 压缩图片以减少数据大小
             ref_image = prepare_edit_reference_image(pil_image, "1536x1024")
-            print(f"[ComfyUI-XLJ-api] image[{idx}]: {ref_image.width}x{ref_image.height}")
-
-            # 上传到图床获取 URL
-            buf = save_image_to_buffer(ref_image, fmt="jpeg", quality=85)
-            files = {
-                "file": ("image.jpg", buf, "image/jpeg")
-            }
-            try:
-                upload_resp = session.post(
-                    IMAGE_HOST_URL,
-                    headers={"Accept": "application/json"},
-                    files=files,
-                    timeout=30,
-                )
-                upload_resp.raise_for_status()
-                upload_data = upload_resp.json()
-                image_url = upload_data.get("url", "")
-                if not image_url:
-                    # 如果图床失败，使用 data URI 作为备用
-                    buf.seek(0)
-                    base64_str = base64.b64encode(buf.read()).decode("utf-8")
-                    image_url = f"data:image/jpeg;base64,{base64_str}"
-                    print(f"[ComfyUI-XLJ-api] image[{idx}] using data URI (upload failed)")
-                else:
-                    print(f"[ComfyUI-XLJ-api] image[{idx}] uploaded: {image_url[:50]}...")
-                image_urls.append(image_url)
-            except Exception as upload_err:
-                # 图床失败时使用 data URI
-                buf = save_image_to_buffer(ref_image, fmt="jpeg", quality=85)
-                buf.seek(0)
-                base64_str = base64.b64encode(buf.read()).decode("utf-8")
-                image_url = f"data:image/jpeg;base64,{base64_str}"
-                print(f"[ComfyUI-XLJ-api] image[{idx}] upload error: {str(upload_err)[:50]}, using data URI")
-                image_urls.append(image_url)
+            buf = io.BytesIO()
+            ref_image.save(buf, format="JPEG", quality=85)
+            buf.seek(0)
+            base64_str = base64.b64encode(buf.read()).decode("utf-8")
+            image_base64_list.append(base64_str)
+            print(f"[ComfyUI-XLJ-api] image[{idx}]: {ref_image.width}x{ref_image.height} base64_len={len(base64_str)}")
 
         print(f"[ComfyUI-XLJ-api] GPT-Image image-to-image: {full_prompt[:60]}...")
         print(f"[ComfyUI-XLJ-api] model={model_name} refs={len(reference_pils)} quality={quality}")
@@ -541,7 +511,7 @@ class XLJGPTImageImageToImage:
             "prompt": full_prompt,
             "n": 1,
             "size": selected_size,
-            "image": image_urls,
+            "image": image_base64_list,  #纯 base64字符串数组
         }
 
         print(f"[ComfyUI-XLJ-api] POST {endpoint} size={selected_size}")
