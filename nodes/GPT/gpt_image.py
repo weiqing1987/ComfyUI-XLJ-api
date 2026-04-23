@@ -387,6 +387,7 @@ class XLJGPTImageImageToImage:
                 "image_input_4": ("IMAGE",),
                 "image_input_5": ("IMAGE",),
                 "image_input_6": ("IMAGE",),
+                "image_url": ("STRING", {"default": "", "multiline": False, "tooltip": "图片URL，多个URL用逗号分隔"}),
                 "system_prompt": ("STRING", {"default": "", "multiline": True}),
                 "output_format": (OUTPUT_FORMATS, {"default": "png"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 2147483647}),
@@ -410,6 +411,7 @@ class XLJGPTImageImageToImage:
             "image_input_4": "Image 4",
             "image_input_5": "Image 5",
             "image_input_6": "Image 6",
+            "image_url": "图片URL",
             "system_prompt": "System Prompt",
             "output_format": "Output Format",
             "seed": "Seed",
@@ -437,6 +439,7 @@ class XLJGPTImageImageToImage:
         image_input_4=None,
         image_input_5=None,
         image_input_6=None,
+        image_url="",
         system_prompt="",
         output_format="png",
         seed=0,
@@ -452,6 +455,15 @@ class XLJGPTImageImageToImage:
         if mode_type == "variation":
             raise RuntimeError("variation is not available for this GPT-Image node")
 
+        # 处理 URL 输入（优先使用 URL）
+        url_list = []
+        if image_url and image_url.strip():
+            # 解析 URL，支持逗号分隔多个 URL
+            urls = [u.strip() for u in image_url.split(",") if u.strip()]
+            url_list.extend(urls)
+            print(f"[ComfyUI-XLJ-api] image_url input: {len(urls)} URLs")
+
+        # 处理 IMAGE 输入（转为 base64）
         reference_pils = collect_reference_pils(
             image_input,
             image_input_2,
@@ -460,30 +472,37 @@ class XLJGPTImageImageToImage:
             image_input_5,
             image_input_6,
         )
-        if not reference_pils:
-            raise RuntimeError("at least one reference image is required")
-        if len(reference_pils) > 5:
-            raise RuntimeError(f"too many reference images: {len(reference_pils)} (max 5)")
 
-        # 新文档：用 /v1/images/generations + image URL 数组
-        request_size = "auto"  # 文档只支持 1024x1024, 1536x1024, 1024x1536
+        # 合并 URL 和图片输入
+        total_images = len(url_list) + len(reference_pils)
+        if total_images == 0:
+            raise RuntimeError("at least one reference image or URL is required")
+        if total_images > 5:
+            raise RuntimeError(f"too many images: {total_images} (max 5, URLs + IMAGE inputs)")
+
+        request_size = "auto"
         full_prompt = build_prompt(
             prompt,
             system_prompt,
             default_prompt="Edit the supplied image while preserving key subject details.",
         )
 
-        # 将图片转为 base64 字符串数组（纯 base64，不带 data: 前缀）
-        image_base64_list = []
+        # 构建 image 数组：URL 直接用，IMAGE 转 base64
+        image_list = []
 
-        for idx, pil_image in enumerate(reference_pils, start=1):
-            # 压缩图片以减少数据大小
+        # 先添加 URL
+        for idx, url in enumerate(url_list, start=1):
+            image_list.append(url)
+            print(f"[ComfyUI-XLJ-api] image[{idx}] URL: {url[:60]}...")
+
+        # 再添加 base64 图片
+        for idx, pil_image in enumerate(reference_pils, start=len(url_list) + 1):
             ref_image = prepare_edit_reference_image(pil_image, "1536x1024")
             buf = io.BytesIO()
             ref_image.save(buf, format="JPEG", quality=85)
             buf.seek(0)
             base64_str = base64.b64encode(buf.read()).decode("utf-8")
-            image_base64_list.append(base64_str)
+            image_list.append(base64_str)
             print(f"[ComfyUI-XLJ-api] image[{idx}]: {ref_image.width}x{ref_image.height} base64_len={len(base64_str)}")
 
         print(f"[ComfyUI-XLJ-api] GPT-Image image-to-image: {full_prompt[:60]}...")
@@ -511,10 +530,10 @@ class XLJGPTImageImageToImage:
             "prompt": full_prompt,
             "n": 1,
             "size": selected_size,
-            "image": image_base64_list,  #纯 base64字符串数组
+            "image": image_list,  # URL 或 base64 字符串数组
         }
 
-        print(f"[ComfyUI-XLJ-api] POST {endpoint} size={selected_size}")
+        print(f"[ComfyUI-XLJ-api] POST {endpoint} size={selected_size} images={len(image_list)}")
 
         try:
             resp = session.post(
@@ -531,7 +550,7 @@ class XLJGPTImageImageToImage:
             response_data = json.loads(response_text)
             image_tensor = base64_to_tensor(extract_image_base64(response_data))
             status = (
-                f"model: {model_name} | refs: {len(reference_pils)} | "
+                f"model: {model_name} | images: {len(image_list)} | "
                 f"size: {selected_size} | quality: {quality}"
             )
 
