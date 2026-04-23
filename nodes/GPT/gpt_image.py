@@ -472,17 +472,23 @@ class XLJGPTImageImageToImage:
             default_prompt="Edit the supplied image while preserving key subject details.",
         )
 
+        # 构建 multipart form-data
         upload_parts = []
-        for idx, pil_image in enumerate(reference_pils, start=1):
+
+        # 第一张参考图作为 image 参数
+        ref_image = prepare_edit_reference_image(reference_pils[0], request_size)
+        upload_file = pil_to_upload_file(ref_image, "image.jpg", "jpeg")
+        upload_parts.append(("image", upload_file))
+        print(f"[ComfyUI-XLJ-api] image[1]: {ref_image.width}x{ref_image.height}")
+
+        # 后续参考图作为 reference[] 数组
+        for idx, pil_image in enumerate(reference_pils[1:], start=2):
             prepared_image = prepare_edit_reference_image(pil_image, request_size)
             upload_file = pil_to_upload_file(prepared_image, f"reference_{idx}.jpg", "jpeg")
-            file_size_mb = round(upload_file[1].getbuffer().nbytes / (1024 * 1024), 3)
-            print(
-                f"[ComfyUI-XLJ-api] image[{idx}] upload={prepared_image.width}x{prepared_image.height} "
-                f"format=jpeg size_mb={file_size_mb}"
-            )
-            upload_parts.append(("image", upload_file))
+            upload_parts.append(("reference[]", upload_file))
+            print(f"[ComfyUI-XLJ-api] image[{idx}]: {prepared_image.width}x{prepared_image.height}")
 
+        # mask 处理
         if image_mask is not None:
             try:
                 mask_image = to_mask_rgba_pil_from_comfy(image_mask)
@@ -496,34 +502,26 @@ class XLJGPTImageImageToImage:
             f"ratio={aspect_ratio} size={request_size} quality={quality} timeout={int(timeout_sec)}s"
         )
 
-        # 使用 /v1/images/generations JSON body（edits 端点在代理服务器超时）
-        endpoint = f"{API_BASE}/v1/images/generations"
-        headers = http_headers_json(api_key)
+        # 使用 /v1/images/edits multipart endpoint（图生图专用）
+        endpoint = f"{API_BASE}/v1/images/edits"
+        headers = http_headers_multipart(api_key)
 
-        # 将第一张参考图转 base64 放入 payload
-        ref_image = _safe_convert_rgb(reference_pils[0])
-        buf = io.BytesIO()
-        ref_image.save(buf, format="JPEG", quality=85)
-        buf.seek(0)
-        ref_base64 = base64.b64encode(buf.read()).decode("utf-8")
-        ref_size_kb = len(buf.getvalue()) / 1024
-        print(f"[ComfyUI-XLJ-api] ref image: {ref_image.width}x{ref_image.height} {ref_size_kb:.0f}KB")
-
-        payload = {
+        # 构建 form data
+        form_data = {
             "model": model_name,
             "prompt": full_prompt,
-            "n": 1,
+            "n": "1",
             "quality": quality,
-            "image": ref_base64,
         }
         if request_size and request_size != "auto":
-            payload["size"] = request_size
+            form_data["size"] = request_size
 
         try:
             resp = session.post(
                 endpoint,
                 headers=headers,
-                data=json.dumps(payload),
+                data=form_data,
+                files=upload_parts,
                 timeout=(30, int(timeout_sec)),
             )
             response_text = resp.text
