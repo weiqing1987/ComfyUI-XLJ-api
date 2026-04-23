@@ -1,6 +1,6 @@
 {
   "id": "73d652f0-4bf9-4269-b001-6daebb997fbe",
-  "revision": 1,
+  "revision": 2,
   "last_node_id": 6,
   "last_link_id": 7,
   "nodes": [
@@ -8,7 +8,7 @@
       "id": 3,
       "type": "PreviewImage",
       "pos": [
-        800,
+        850,
         50
       ],
       "size": [
@@ -16,7 +16,7 @@
         246
       ],
       "flags": {},
-      "order": 3,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {
@@ -28,9 +28,7 @@
       "outputs": [],
       "properties": {
         "cnr_id": "comfy-core",
-        "ver": "0.17.2",
-        "Node name for S&R": "PreviewImage",
-        "widget_ue_connectable": {}
+        "Node name for S&R": "PreviewImage"
       },
       "widgets_values": []
     },
@@ -66,9 +64,7 @@
       ],
       "properties": {
         "cnr_id": "comfy-core",
-        "ver": "0.17.2",
-        "Node name for S&R": "LoadImage",
-        "widget_ue_connectable": {}
+        "Node name for S&R": "LoadImage"
       },
       "widgets_values": [
         "example.png",
@@ -87,38 +83,47 @@
         400
       ],
       "flags": {},
-      "order": 2,
+      "order": 3,
       "mode": 0,
       "inputs": [
         {
           "name": "image_input",
           "shape": 7,
-          "type": "*",
+          "type": "IMAGE",
           "link": 4
         },
         {
           "name": "image_input_2",
           "shape": 7,
-          "type": "*",
+          "type": "IMAGE",
           "link": null
         },
         {
           "name": "image_input_3",
           "shape": 7,
-          "type": "*",
+          "type": "IMAGE",
           "link": null
         },
         {
           "name": "image_input_4",
           "shape": 7,
-          "type": "*",
+          "type": "IMAGE",
           "link": null
         },
         {
           "name": "image_input_5",
           "shape": 7,
-          "type": "*",
+          "type": "IMAGE",
           "link": null
+        },
+        {
+          "name": "image_url",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "image_url"
+          },
+          "link": 7
         },
         {
           "name": "image_mask",
@@ -144,8 +149,7 @@
       ],
       "properties": {
         "aux_id": "weiqing1987/ComfyUI-XLJ-api",
-        "Node name for S&R": "XLJGPTImageImageToImage",
-        "widget_ue_connectable": {}
+        "Node name for S&R": "XLJGPTImageImageToImage"
       },
       "widgets_values": [
         "gpt-image-2-all",
@@ -153,6 +157,7 @@
         "1:1",
         "auto",
         "edit",
+        "",
         "",
         0,
         "png",
@@ -192,9 +197,7 @@
       ],
       "properties": {
         "cnr_id": "comfy-core",
-        "ver": "0.17.2",
-        "Node name for S&R": "LoadImage",
-        "widget_ue_connectable": {}
+        "Node name for S&R": "LoadImage"
       },
       "widgets_values": [
         "example.png",
@@ -213,7 +216,7 @@
         150
       ],
       "flags": {},
-      "order": 4,
+      "order": 2,
       "mode": 0,
       "inputs": [
         {
@@ -227,7 +230,9 @@
           "name": "图片 URL",
           "type": "STRING",
           "slot_index": 0,
-          "links": null
+          "links": [
+            7
+          ]
         },
         {
           "name": "创建时间",
@@ -255,7 +260,7 @@
       ],
       "size": [
         315,
-        200
+        180
       ],
       "flags": {},
       "order": 5,
@@ -264,7 +269,7 @@
       "outputs": [],
       "properties": {},
       "widgets_values": [
-        "使用说明:\n\n1. image_input 现支持两种输入:\n   - 直接接 IMAGE (图片)\n   - 接 STRING (URL，如图床输出)\n\n2. 可混合使用，最多5张图\n\n3. 下方的图床节点示例:\n   LoadImage → UploadToImageHost → image_input\n   (把图床输出的URL连接到image_input)"
+        "使用说明:\n\n1. image_input (IMAGE): 直接接图片\n2. image_url (STRING): 接图床输出的URL\n\n示例: LoadImage → 图床 → image_url\n(图床输出的URL连接到image_url接口)"
       ]
     }
   ],
@@ -275,7 +280,7 @@
       0,
       2,
       0,
-      "*"
+      "IMAGE"
     ],
     [
       5,
@@ -292,6 +297,14 @@
       5,
       0,
       "IMAGE"
+    ],
+    [
+      7,
+      5,
+      0,
+      2,
+      5,
+      "STRING"
     ]
   ],
   "groups": [],
