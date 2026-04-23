@@ -462,123 +462,83 @@ class XLJGPTImageImageToImage:
         )
         if not reference_pils:
             raise RuntimeError("at least one reference image is required")
-        if len(reference_pils) > 16:
-            raise RuntimeError(f"too many reference images: {len(reference_pils)} (max 16)")
+        if len(reference_pils) > 5:
+            raise RuntimeError(f"too many reference images: {len(reference_pils)} (max 5)")
 
-        request_size = EDIT_ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "auto")
+        # 新文档：用 /v1/images/generations + image URL 数组
+        request_size = "auto"  # 文档只支持 1024x1024, 1536x1024, 1024x1536
         full_prompt = build_prompt(
             prompt,
             system_prompt,
             default_prompt="Edit the supplied image while preserving key subject details.",
         )
 
+        # 将图片转为 data URI 格式（符合文档的 URL 数组要求）
+        image_urls = []
+        for idx, pil_image in enumerate(reference_pils, start=1):
+            # 压缩图片以减少数据大小
+            ref_image = prepare_edit_reference_image(pil_image, "1536x1024")
+            buf = io.BytesIO()
+            ref_image.save(buf, format="JPEG", quality=85)
+            buf.seek(0)
+            base64_str = base64.b64encode(buf.read()).decode("utf-8")
+            data_uri = f"data:image/jpeg;base64,{base64_str}"
+            image_urls.append(data_uri)
+            print(f"[ComfyUI-XLJ-api] image[{idx}]: {ref_image.width}x{ref_image.height}")
+
         print(f"[ComfyUI-XLJ-api] GPT-Image image-to-image: {full_prompt[:60]}...")
-        print(
-            f"[ComfyUI-XLJ-api] model={model_name} mode={mode_type} refs={len(reference_pils)} "
-            f"ratio={aspect_ratio} size={request_size} quality={quality} timeout={int(timeout_sec)}s"
-        )
+        print(f"[ComfyUI-XLJ-api] model={model_name} refs={len(reference_pils)} quality={quality}")
 
-        # 准备参考图（压缩到合理大小，减少超时风险）
-        ref_image = prepare_edit_reference_image(reference_pils[0], request_size)
-        print(f"[ComfyUI-XLJ-api] image[1]: {ref_image.width}x{ref_image.height}")
+        # 使用 /v1/images/generations JSON endpoint
+        endpoint = f"{API_BASE}/v1/images/generations"
+        headers = http_headers_json(api_key)
 
-        extra_refs = []
-        for idx, pil_image in enumerate(reference_pils[1:], start=2):
-            prepared_image = prepare_edit_reference_image(pil_image, request_size)
-            extra_refs.append(prepared_image)
-            print(f"[ComfyUI-XLJ-api] image[{idx}]: {prepared_image.width}x{prepared_image.height}")
+        # 按文档格式构建 payload
+        # size 只支持 1024x1024, 1536x1024, 1024x1536
+        size_options = ["1024x1024", "1536x1024", "1024x1536"]
+        # 根据 aspect_ratio 选择合适的 size
+        if aspect_ratio in ["1:1", "auto"]:
+            selected_size = "1024x1024"
+        elif aspect_ratio in ["2:3", "3:4", "4:5", "9:16"]:  #竖版
+            selected_size = "1024x1536"
+        elif aspect_ratio in ["3:2", "4:3", "5:4", "16:9", "21:9"]:  # 横版
+            selected_size = "1536x1024"
+        else:
+            selected_size = "1024x1024"
 
-        mask_pil = None
-        if image_mask is not None:
-            try:
-                mask_pil = to_mask_rgba_pil_from_comfy(image_mask)
-            except Exception as e:
-                raise RuntimeError(f"mask conversion failed: {str(e)}")
-
-        # 自动重试，最多 3 次
-        max_retries = 3
-        last_error = None
-
-        for attempt in range(1, max_retries + 1):
-            try:
-                image_tensor, status = self._try_edit_request(
-                    model_name, full_prompt, quality, request_size,
-                    ref_image, extra_refs, mask_pil,
-                    api_key, timeout_sec, attempt,
-                )
-                print("[ComfyUI-XLJ-api] GPT-Image image-to-image done")
-                status_full = (
-                    f"model: {model_name} | mode: {mode_type} | refs: {len(reference_pils)} | "
-                    f"ratio: {aspect_ratio} | size: {request_size} | quality: {quality}"
-                )
-                return (image_tensor, status_full)
-            except Exception as e:
-                last_error = e
-                err_str = str(e)
-                is_timeout = "timed out" in err_str.lower() or "timeout" in err_str.lower() or "443" in err_str
-                is_retryable = is_timeout or "429" in err_str or "502" in err_str or "503" in err_str
-
-                if is_retryable and attempt < max_retries:
-                    import time
-                    wait_sec = 10 * attempt
-                    print(f"[ComfyUI-XLJ-api] attempt {attempt}/{max_retries} failed ({err_str[:80]}), retrying in {wait_sec}s...")
-                    time.sleep(wait_sec)
-                else:
-                    break
-
-        raise RuntimeError(f"GPT-Image image-to-image failed after {max_retries} attempts: {str(last_error)}")
-
-    def _try_edit_request(
-        self,
-        model_name, full_prompt, quality, request_size,
-        ref_image, extra_refs, mask_pil,
-        api_key, timeout_sec, attempt,
-    ):
-        # 每次重试需要重新创建 upload_parts（BytesIO 已被消耗）
-        upload_parts = []
-
-        # 第一张参考图作为 image 参数
-        upload_parts.append(("image", pil_to_upload_file(ref_image, "image.png", "png")))
-
-        # 后续参考图作为 image[] 数组
-        for idx, prepared_image in enumerate(extra_refs, start=2):
-            upload_parts.append(("image[]", pil_to_upload_file(prepared_image, f"ref_{idx}.png", "png")))
-
-        # mask 处理
-        if mask_pil is not None:
-            upload_parts.append(("mask", pil_to_upload_file(mask_pil, "mask.png", "png")))
-
-        endpoint = f"{API_BASE}/v1/images/edits"
-        headers = http_headers_multipart(api_key)
-
-        form_data = {
+        payload = {
             "model": model_name,
             "prompt": full_prompt,
-            "n": "1",
-            "quality": quality,
+            "n": 1,
+            "size": selected_size,
+            "image": image_urls,
         }
-        if request_size and request_size != "auto":
-            form_data["size"] = request_size
 
-        # 重试时逐步增加超时
-        per_attempt_timeout = min(int(timeout_sec), 180 * attempt)
-        print(f"[ComfyUI-XLJ-api] attempt {attempt}: POST {endpoint} timeout={per_attempt_timeout}s")
+        print(f"[ComfyUI-XLJ-api] POST {endpoint} size={selected_size}")
 
-        resp = session.post(
-            endpoint,
-            headers=headers,
-            data=form_data,
-            files=upload_parts,
-            timeout=(30, per_attempt_timeout),
-        )
-        response_text = resp.text
+        try:
+            resp = session.post(
+                endpoint,
+                headers=headers,
+                data=json.dumps(payload),
+                timeout=(30, int(timeout_sec)),
+            )
+            response_text = resp.text
 
-        if resp.status_code >= 400:
-            raise RuntimeError(parse_error_message(response_text, resp.status_code))
+            if resp.status_code >= 400:
+                raise RuntimeError(parse_error_message(response_text, resp.status_code))
 
-        response_data = json.loads(response_text)
-        image_tensor = base64_to_tensor(extract_image_base64(response_data))
-        return image_tensor, "ok"
+            response_data = json.loads(response_text)
+            image_tensor = base64_to_tensor(extract_image_base64(response_data))
+            status = (
+                f"model: {model_name} | refs: {len(reference_pils)} | "
+                f"size: {selected_size} | quality: {quality}"
+            )
+
+            print("[ComfyUI-XLJ-api] GPT-Image image-to-image done")
+            return (image_tensor, status)
+        except Exception as e:
+            raise RuntimeError(f"GPT-Image image-to-image failed: {str(e)}")
 
 
 NODE_CLASS_MAPPINGS = {
