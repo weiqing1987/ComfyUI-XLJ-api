@@ -38,8 +38,8 @@ def auto_register_nodes():
 # 自动注册所有节点
 auto_register_nodes()
 
-# 前端扩展
-WEB_DIRECTORY = None
+# 前端扩展（进度条等 JS 插件）
+WEB_DIRECTORY = "./web/extensions"
 
 # 导出
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

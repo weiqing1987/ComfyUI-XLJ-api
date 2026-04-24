@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import time
 
 import numpy as np
 import requests
@@ -53,6 +54,42 @@ def image_bytes_to_tensor(image_bytes):
 
 session = requests.Session()
 session.trust_env = False
+
+
+def emit_runtime_status(
+    node_id,
+    status,
+    message="",
+    elapsed_seconds=0.0,
+    attempt=0,
+    retry_times=0,
+    timeout_seconds=0,
+):
+    """Send runtime status to the ComfyUI frontend extension."""
+    if node_id in (None, ""):
+        return
+    try:
+        from server import PromptServer
+
+        if PromptServer.instance is None:
+            return
+
+        PromptServer.instance.send_sync(
+            "comfyui_xlj_gpt_status",
+            {
+                "node_id": str(node_id),
+                "status": status,
+                "message": message,
+                "elapsed_seconds": float(elapsed_seconds),
+                "attempt": int(attempt),
+                "retry_times": int(retry_times),
+                "timeout_seconds": int(timeout_seconds),
+                "timestamp": time.time(),
+            },
+        )
+    except Exception:
+        pass
+
 
 GPT_IMAGE_MODELS = [
     "gpt-image-2-all",
@@ -104,6 +141,42 @@ EDIT_ASPECT_RATIO_TO_SIZE = {
 QUALITY_OPTIONS = ["auto", "low", "medium", "high"]
 OUTPUT_FORMATS = ["png", "jpeg", "webp"]
 MODE_TYPES = ["edit", "reference", "variation"]
+
+# ===== 图生图 /v1/images/edits 专用常量 =====
+EDIT_MODELS = [
+    "gpt-image-2-all",
+    "gpt-image-2",
+]
+
+EDIT_ASPECT_RATIOS = ["9:16", "2:3", "3:4", "1:1", "4:3", "3:2", "16:9", "21:9", "auto"]
+EDIT_RESOLUTIONS = ["1K", "2K"]
+EDIT_QUALITIES = ["auto", "low", "medium", "high"]
+EDIT_BACKGROUNDS = ["auto", "transparent", "opaque"]
+
+EDIT_SIZE_MAP = {
+    "1K": {
+        "1:1":  "1024x1024",
+        "16:9": "1536x1024",
+        "9:16": "1024x1536",
+        "3:2":  "1536x1024",
+        "2:3":  "1024x1536",
+        "4:3":  "1536x1024",
+        "3:4":  "1024x1536",
+        "21:9": "1536x1024",
+        "auto": "auto",
+    },
+    "2K": {
+        "1:1":  "2048x2048",
+        "16:9": "2048x1152",
+        "9:16": "1152x2048",
+        "3:2":  "2048x1365",
+        "2:3":  "1365x2048",
+        "4:3":  "2048x1536",
+        "3:4":  "1536x2048",
+        "21:9": "2048x858",
+        "auto": "auto",
+    },
+}
 
 
 def _strip_data_uri_prefix(base64_str: str) -> str:
@@ -397,276 +470,266 @@ class XLJGPTImageTextToImage:
 
 
 class XLJGPTImageImageToImage:
-    """GPT-Image 图生图节点，参考 Comfyui-Luck 版面"""
-
-    MODELS = ["gpt-image-2-all", "gpt-image-2"]
-    API_BASES = [
-        "https://yunwu.ai",
-        "https://xinlingjunai.cn",
-    ]
-    ENDPOINTS = [
-        "chat_completions (推荐)",
-        "images_generations (兼容)",
-    ]
-    ASPECT_RATIOS = [
-        "AUTO",
-        "1:1",
-        "16:9",
-        "9:16",
-        "21:9",
-        "4:3",
-        "3:2",
-    ]
+    """GPT-Image 图生图节点 — POST /v1/images/edits (multipart/form-data)"""
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "api_key (API密钥)": ("STRING", {"default": "", "multiline": False}),
-                "prompt (提示词)": ("STRING", {"default": "", "multiline": True}),
-                "mode (模式)": (["AUTO", "text2img", "img2img"], {"default": "AUTO"}),
-                "model (模型)": (cls.MODELS, {"default": "gpt-image-2-all"}),
-                "api_base (接口域名)": (cls.API_BASES, {"default": "https://yunwu.ai"}),
-                "endpoint (端点)": (cls.ENDPOINTS, {"default": "chat_completions (推荐)"}),
-                "aspect_ratio (宽高比)": (cls.ASPECT_RATIOS, {"default": "AUTO"}),
-                "response_format (响应格式)": (["url", "b64_json"], {"default": "url"}),
-                "seed (种子)": (
-                    "INT",
-                    {
-                        "default": 0,
-                        "min": 0,
-                        "max": 2147483647,
-                        "control_after_generate": True,
-                    },
-                ),
-                "timeout_seconds (超时秒数)": ("INT", {"default": 60, "min": 30, "max": 300}),
-                "retry_times (重试次数)": ("INT", {"default": 3, "min": 1, "max": 10}),
+                "model": (EDIT_MODELS, {"default": EDIT_MODELS[0], "tooltip": "选择模型"}),
+                "prompt": ("STRING", {"default": "将他们合并在一个图片里面", "multiline": True, "tooltip": "图像编辑提示词"}),
+                "aspect_ratio": (EDIT_ASPECT_RATIOS, {"default": "1:1", "tooltip": "输出宽高比"}),
+                "resolution": (EDIT_RESOLUTIONS, {"default": "1K", "tooltip": "输出分辨率"}),
+                "quality": (EDIT_QUALITIES, {"default": "auto", "tooltip": "生成质量"}),
+                "api_key": ("STRING", {"default": "", "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"}),
+                "timeout_seconds": ("INT", {"default": 180, "min": 30, "max": 1200, "tooltip": "请求超时秒数"}),
+                "retry_times": ("INT", {"default": 3, "min": 1, "max": 10, "tooltip": "失败重试次数"}),
             },
             "optional": {
-                **{f"image_{i:02d}": ("IMAGE",) for i in range(1, 6)},
+                "background": (EDIT_BACKGROUNDS, {"default": "auto", "tooltip": "背景透明度（仅 gpt-image-1 支持）"}),
+                "n": ("INT", {"default": 1, "min": 1, "max": 10, "tooltip": "生成图片张数（1-10张）"}),
+                "image_input": ("IMAGE", {"tooltip": "参考图片 1"}),
+                "image_input_2": ("IMAGE", {"tooltip": "参考图片 2"}),
+                "image_input_3": ("IMAGE", {"tooltip": "参考图片 3"}),
+                "image_input_4": ("IMAGE", {"tooltip": "参考图片 4"}),
+                "image_input_5": ("IMAGE", {"tooltip": "参考图片 5"}),
+                "image_input_6": ("IMAGE", {"tooltip": "参考图片 6"}),
+                "image_input_7": ("IMAGE", {"tooltip": "参考图片 7"}),
+                "image_input_8": ("IMAGE", {"tooltip": "参考图片 8"}),
+                "image_input_9": ("IMAGE", {"tooltip": "参考图片 9"}),
+                "image_input_10": ("IMAGE", {"tooltip": "参考图片 10"}),
+                "image_mask": ("MASK", {"tooltip": "遮罩（透明区域=可编辑）"}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
             },
         }
 
-    RETURN_TYPES = ("IMAGE", "STRING", "STRING")
-    RETURN_NAMES = ("image", "response", "image_urls")
+    @classmethod
+    def INPUT_LABELS(cls):
+        return {
+            "model": "模型",
+            "prompt": "提示词",
+            "aspect_ratio": "宽高比",
+            "resolution": "输出分辨率",
+            "quality": "质量",
+            "api_key": "API 密钥",
+            "timeout_seconds": "超时(秒)",
+            "retry_times": "重试次数",
+            "background": "背景",
+            "n": "生成图片张数",
+            "image_input": "图片1",
+            "image_input_2": "图片2",
+            "image_input_3": "图片3",
+            "image_input_4": "图片4",
+            "image_input_5": "图片5",
+            "image_input_6": "图片6",
+            "image_input_7": "图片7",
+            "image_input_8": "图片8",
+            "image_input_9": "图片9",
+            "image_input_10": "图片10",
+            "image_mask": "遮罩",
+        }
+
+    RETURN_TYPES = ("IMAGE", "STRING")
+    RETURN_NAMES = ("image", "status")
     FUNCTION = "generate"
     CATEGORY = "XLJ/GPT"
     OUTPUT_NODE = True
 
-    def _collect_images(self, kwargs):
-        """收集图片输入"""
+    def generate(self, model, prompt, aspect_ratio, resolution, quality, api_key,
+                 timeout_seconds, retry_times,
+                 background="auto", n=1,
+                 unique_id=None,
+                 image_input=None, image_input_2=None, image_input_3=None,
+                 image_input_4=None, image_input_5=None, image_input_6=None,
+                 image_input_7=None, image_input_8=None, image_input_9=None,
+                 image_input_10=None,
+                 image_mask=None):
+
+        start_ts = time.time()
+
+        # --- API Key ---
+        api_key = env_or(api_key, "XLJ_API_KEY")
+        if not api_key:
+            emit_runtime_status(unique_id, "error", "API Key 为空", 0.0, 0, retry_times, timeout_seconds)
+            raise RuntimeError("API Key 不能为空（在节点填入或设置环境变量 XLJ_API_KEY）")
+
+        # --- prompt ---
+        effective_prompt = (prompt or "").strip()
+        if not effective_prompt:
+            emit_runtime_status(unique_id, "error", "提示词为空", 0.0, 0, retry_times, timeout_seconds)
+            raise RuntimeError("提示词不能为空")
+
+        # --- size = 宽高比 × 分辨率 ---
+        size = EDIT_SIZE_MAP.get(resolution, EDIT_SIZE_MAP["1K"]).get(aspect_ratio, "auto")
+
+        # --- 收集图片（multipart files） ---
         image_payloads = []
-        for i in range(1, 6):
-            tensor = kwargs.get(f"image_{i:02d}")
-            if tensor is None:
-                continue
-            pil_list = comfy_image_to_pil_list(tensor)
-            if pil_list:
-                pil = pil_list[0]
-                buf = io.BytesIO()
-                pil.save(buf, format="PNG")
-                buf.seek(0)
-                image_payloads.append((f"image_{i:02d}.png", buf.getvalue()))
-                print(f"[ComfyUI-XLJ-api] image_{i:02d}: {pil.width}x{pil.height}")
-        return image_payloads
+        for i, img in enumerate([image_input, image_input_2, image_input_3, image_input_4, image_input_5, image_input_6, image_input_7, image_input_8, image_input_9, image_input_10], 1):
+            if img is not None:
+                pil_list = comfy_image_to_pil_list(img)
+                if pil_list:
+                    pil = pil_list[0]
+                    buf = io.BytesIO()
+                    pil.save(buf, format="PNG")
+                    buf.seek(0)
+                    image_payloads.append((f"image_{i}.png", buf.getvalue()))
+                    print(f"[ComfyUI-XLJ-api] 信陵君 图片{i}: {pil.width}x{pil.height}")
 
-    def _compose_prompt(self, prompt, aspect_ratio):
-        """构建提示词（比例写入提示词前缀）"""
-        AUTO_RATIO_PROMPTS = {
-            "1:1": "1024×1024 方图 / 1:1 方形构图",
-            "16:9": "横版 16:9 / 宽屏 16:9 电影画幅",
-            "9:16": "竖版 9:16 / 手机海报 9:16",
-            "21:9": "横幅 21:9 超宽银幕",
-            "4:3": "4:3 标准画幅",
-            "3:2": "3:2 经典画幅",
+        if not image_payloads:
+            emit_runtime_status(unique_id, "error", "至少需要一张图片", 0.0, 0, retry_times, timeout_seconds)
+            raise RuntimeError("至少需要连接一张参考图到 image_input")
+
+        # --- mask 处理 ---
+        mask_bytes = None
+        if image_mask is not None:
+            try:
+                mask_pil = to_mask_rgba_pil_from_comfy(image_mask)
+                mbuf = io.BytesIO()
+                mask_pil.save(mbuf, format="PNG")
+                mask_bytes = mbuf.getvalue()
+                print("[ComfyUI-XLJ-api] 信陵君 已添加遮罩")
+            except Exception as e:
+                print(f"[ComfyUI-XLJ-api] 信陵君 遮罩处理失败，已忽略: {e}")
+
+        # --- 锁定 API 地址 ---
+        endpoint = f"{API_BASE}/v1/images/edits"
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {api_key}",
         }
-        clean_prompt = (prompt or "").strip()
-        prefix = AUTO_RATIO_PROMPTS.get(aspect_ratio, "") if aspect_ratio != "AUTO" else ""
 
-        if not clean_prompt and not prefix:
-            raise ValueError("prompt 不能为空")
+        print(f"[ComfyUI-XLJ-api] 信陵君 GPT-Image 编辑 | model={model} ratio={aspect_ratio} "
+              f"res={resolution} size={size} images={len(image_payloads)}")
 
-        if prefix and clean_prompt:
-            return f"{prefix}，{clean_prompt}"
-        if prefix:
-            return prefix
-        return clean_prompt
-
-    def _request_chat_completions(self, api_base, headers, model, prompt, image_payloads, timeout):
-        """chat/completions 方式"""
-        content = [{"type": "text", "text": prompt}]
-        for _, image_bytes in image_payloads:
-            data_url = "data:image/png;base64," + base64.b64encode(image_bytes).decode("utf-8")
-            content.append({"type": "image_url", "image_url": {"url": data_url}})
-
-        payload = {
-            "model": model,
-            "messages": [{"role": "user", "content": content}],
-            "stream": False,
-        }
-        return session.post(
-            f"{api_base}/v1/chat/completions",
-            headers={**headers, "Content-Type": "application/json"},
-            json=payload,
-            timeout=timeout,
-        )
-
-    def _request_images_generations(self, api_base, headers, model, prompt, image_payloads, timeout):
-        """images/generations 方式"""
-        # 图片转 base64 数组
-        image_list = []
-        for _, image_bytes in image_payloads:
-            image_list.append(base64.b64encode(image_bytes).decode("utf-8"))
-
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "n": 1,
-            "image": image_list,
-        }
-        return session.post(
-            f"{api_base}/v1/images/generations",
-            headers={**headers, "Content-Type": "application/json"},
-            json=payload,
-            timeout=timeout,
-        )
-
-    def _parse_response(self, data, response_format, timeout, endpoint_type):
-        """解析响应"""
-        image_urls = []
-
-        if endpoint_type == "chat_completions":
-            # 从 choices[0].message.content 提取图片
-            choices = data.get("choices") or []
-            if not choices:
-                raise RuntimeError(f"API 未返回 choices: {data}")
-            message = choices[0].get("message") or {}
-            content = message.get("content") or ""
-            image_refs = extract_image_references(content)
-            if not image_refs:
-                raise RuntimeError(f"响应中未找到图片: {content[:200]}")
-            image_urls.extend(image_refs)
-        else:
-            # 从 data[].url 或 data[].b64_json 提取
-            items = data.get("data") or []
-            if not items:
-                raise RuntimeError(f"API 未返回图片数据: {data}")
-            for item in items:
-                if item.get("url"):
-                    image_urls.append(item["url"])
-
-        if not image_urls:
-            raise RuntimeError(f"未能解析图片: {data}")
-
-        # 下载/解码第一张图片
-        first_ref = image_urls[0]
-        if first_ref.startswith("data:"):
-            image_tensor = b64_json_to_tensor(first_ref)
-        else:
-            resp = session.get(first_ref, timeout=timeout)
-            resp.raise_for_status()
-            image_tensor = image_bytes_to_tensor(resp.content)
-
-        return image_tensor, image_urls
-
-    def generate(self, **kwargs):
-        api_key = kwargs.get("api_key (API密钥)", "")
-        prompt = kwargs.get("prompt (提示词)", "")
-        mode = kwargs.get("mode (模式)", "AUTO")
-        model = kwargs.get("model (模型)", "gpt-image-2-all")
-        api_base = kwargs.get("api_base (接口域名)", "https://yunwu.ai").rstrip("/")
-        endpoint = kwargs.get("endpoint (端点)", "chat_completions (推荐)")
-        aspect_ratio = kwargs.get("aspect_ratio (宽高比)", "AUTO")
-        response_format = kwargs.get("response_format (响应格式)", "url")
-        seed = kwargs.get("seed (种子)", 0)
-        timeout_seconds = kwargs.get("timeout_seconds (超时秒数)", 60)
-        retry_times = kwargs.get("retry_times (重试次数)", 3)
-
-        if not api_key.strip():
-            raise ValueError("API Key 不能为空")
-
-        effective_prompt = self._compose_prompt(prompt, aspect_ratio)
-        image_payloads = self._collect_images(kwargs)
-
-        print(f"[ComfyUI-XLJ-api] effective prompt: {effective_prompt[:500]}")
-
-        # AUTO 模式自动判断
-        if mode == "AUTO":
-            actual_mode = "img2img" if image_payloads else "text2img"
-        else:
-            actual_mode = mode
-
-        if actual_mode == "img2img" and not image_payloads:
-            raise ValueError("img2img 模式需要至少一张参考图")
-
-        headers = {"Authorization": f"Bearer {api_key.strip()}"}
-        endpoint_type = "chat_completions" if endpoint.startswith("chat_completions") else "generations"
-
-        print(f"[ComfyUI-XLJ-api] endpoint={endpoint}, mode={actual_mode}, model={model}, seed={seed} (not sent to API)")
+        emit_runtime_status(unique_id, "running", "开始请求", 0.0, 0, retry_times, timeout_seconds)
 
         last_error = None
         for attempt in range(1, retry_times + 1):
             try:
-                if endpoint_type == "chat_completions":
-                    response = self._request_chat_completions(
-                        api_base, headers, model, effective_prompt, image_payloads, timeout_seconds
-                    )
-                else:
-                    response = self._request_images_generations(
-                        api_base, headers, model, effective_prompt, image_payloads, timeout_seconds
-                    )
+                emit_runtime_status(
+                    unique_id, "running",
+                    f"请求中 ({attempt}/{retry_times})",
+                    time.time() - start_ts, attempt, retry_times, timeout_seconds,
+                )
+
+                # --- multipart/form-data ---
+                files = []
+                for fname, b in image_payloads:
+                    files.append(("image", (fname, b, "image/png")))
+                if mask_bytes is not None:
+                    files.append(("mask", ("mask.png", mask_bytes, "image/png")))
+
+                form_data = {
+                    "prompt": effective_prompt,
+                    "model": model,
+                    "n": str(int(n)),
+                    "quality": quality,
+                }
+                if size and size != "auto":
+                    form_data["size"] = size
+                if background and background != "auto":
+                    form_data["background"] = background
+
+                response = session.post(
+                    endpoint, headers=headers,
+                    data=form_data, files=files,
+                    timeout=timeout_seconds,
+                )
 
                 if response.status_code != 200:
-                    last_error = f"API 错误 {response.status_code}: {response.text[:200]}"
+                    last_error = f"API 错误 {response.status_code}: {response.text[:300]}"
                     if response.status_code in (408, 429) or response.status_code >= 500:
                         if attempt < retry_times:
-                            import time
+                            emit_runtime_status(
+                                unique_id, "running",
+                                f"API 返回 {response.status_code}，重试 ({attempt}/{retry_times})",
+                                time.time() - start_ts, attempt, retry_times, timeout_seconds,
+                            )
                             time.sleep(min(2 ** (attempt - 1), 8))
                             continue
                     raise RuntimeError(last_error)
 
                 data = response.json()
-                image_tensor, image_urls = self._parse_response(data, response_format, timeout_seconds, endpoint_type)
-
-                response_info = {
-                    "status": "success",
-                    "model": model,
-                    "endpoint": endpoint,
-                    "mode": actual_mode,
-                    "api_base": api_base,
-                    "aspect_ratio": aspect_ratio,
-                    "prompt": effective_prompt,
-                    "response_format": response_format,
-                    "seed": seed,
-                    "seed_note": "seed 仅用于 ComfyUI 控制，不发送给 API",
-                    "input_images": len(image_payloads),
-                    "output_images": int(image_tensor.shape[0]),
-                    "image_urls": image_urls,
-                }
-
-                print(f"[ComfyUI-XLJ-api] 生成成功")
-                return (
-                    image_tensor,
-                    json.dumps(response_info, ensure_ascii=False, indent=2),
-                    "\n".join(image_urls),
+                emit_runtime_status(
+                    unique_id, "running", "解析图片",
+                    time.time() - start_ts, attempt, retry_times, timeout_seconds,
                 )
+
+                # --- 解析响应（兼容 data[].b64_json/url 和 choices[].message.content）---
+                image_tensor = None
+
+                img_data = data.get("data")
+                if isinstance(img_data, list) and img_data:
+                    item = img_data[0]
+                    b64 = item.get("b64_json")
+                    if b64:
+                        image_tensor = base64_to_tensor(b64)
+                    else:
+                        img_url = item.get("url")
+                        if img_url:
+                            dl = session.get(img_url, timeout=timeout_seconds)
+                            dl.raise_for_status()
+                            image_tensor = image_bytes_to_tensor(dl.content)
+
+                if image_tensor is None:
+                    choices = data.get("choices") or []
+                    if choices:
+                        msg_content = (choices[0].get("message") or {}).get("content") or ""
+                        refs = extract_image_references(msg_content)
+                        if refs:
+                            first_ref = refs[0]
+                            if first_ref.startswith("data:"):
+                                image_tensor = base64_to_tensor(_strip_data_uri_prefix(first_ref))
+                            else:
+                                dl = session.get(first_ref, timeout=timeout_seconds)
+                                dl.raise_for_status()
+                                image_tensor = image_bytes_to_tensor(dl.content)
+
+                if image_tensor is None:
+                    raise RuntimeError(f"无法从响应提取图片: {json.dumps(data, ensure_ascii=False)[:300]}")
+
+                elapsed = time.time() - start_ts
+                status = (f"model={model} | ratio={aspect_ratio} | res={resolution} | "
+                          f"size={size} | elapsed={elapsed:.1f}s")
+                emit_runtime_status(
+                    unique_id, "success",
+                    f"生成完成 ({elapsed:.1f}s)",
+                    elapsed, attempt, retry_times, timeout_seconds,
+                )
+                print(f"[ComfyUI-XLJ-api] 信陵君 GPT-Image 编辑成功 {elapsed:.1f}s")
+                return (image_tensor, status)
 
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
                 last_error = str(exc)
                 if attempt < retry_times:
-                    import time
+                    emit_runtime_status(
+                        unique_id, "running",
+                        f"网络超时，重试 ({attempt}/{retry_times})",
+                        time.time() - start_ts, attempt, retry_times, timeout_seconds,
+                    )
                     time.sleep(min(2 ** (attempt - 1), 8))
                     continue
                 break
             except Exception as exc:
                 last_error = str(exc)
-                if attempt < retry_times and ("408" in last_error or "429" in last_error or "5" in last_error[:3]):
-                    import time
+                if attempt < retry_times:
                     time.sleep(min(2 ** (attempt - 1), 8))
                     continue
+                emit_runtime_status(
+                    unique_id, "error", last_error,
+                    time.time() - start_ts, attempt, retry_times, timeout_seconds,
+                )
                 raise RuntimeError(f"生成失败: {last_error}")
 
-        raise RuntimeError(f"连续 {retry_times} 次失败，最后错误: {last_error}")
+        elapsed = time.time() - start_ts
+        emit_runtime_status(
+            unique_id, "error",
+            f"连续 {retry_times} 次失败",
+            elapsed, retry_times, retry_times, timeout_seconds,
+        )
+        raise RuntimeError(f"连续 {retry_times} 次失败: {last_error}")
 
 
 NODE_CLASS_MAPPINGS = {
