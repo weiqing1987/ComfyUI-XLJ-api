@@ -5,37 +5,79 @@ GPT image nodes for XLJ API.
 import base64
 import io
 import json
+import math
 import os
 import re
 import time
+from pathlib import Path
 
+import folder_paths
 import numpy as np
 import requests
 import torch
 from PIL import Image
 
-from ..xlj_utils import (
-    API_BASE,
-    env_or,
-    http_headers_json,
-    http_headers_multipart,
-    save_image_to_buffer,
-    to_mask_rgba_pil_from_comfy,
-    to_pil_from_comfy,
-)
+from ..xlj_utils import API_BASE, env_or, http_headers_json, to_mask_rgba_pil_from_comfy, to_pil_from_comfy
+
+
+session = requests.Session()
+session.trust_env = False
+
+
+GPT_IMAGE_MODELS = [
+    "gpt-image-2-all",
+    "gpt-image-2",
+]
+
+ASPECT_RATIO_LABELS = [
+    "1:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "21:9",
+    "auto",
+]
+
+QUALITY_OPTIONS = ["auto", "low", "medium", "high"]
+OUTPUT_FORMATS = ["png", "jpeg", "webp"]
+RESOLUTION_OPTIONS = ["auto", "1K", "2K", "4K"]
+
+EDIT_MODELS = GPT_IMAGE_MODELS
+EDIT_ASPECT_RATIOS = ["9:16", "2:3", "3:4", "1:1", "4:3", "3:2", "16:9", "21:9", "auto"]
+EDIT_RESOLUTIONS = RESOLUTION_OPTIONS
+EDIT_QUALITIES = QUALITY_OPTIONS
+EDIT_BACKGROUNDS = ["auto", "transparent", "opaque"]
+
+SIZE_RULES = {
+    "min_pixels": 655_360,
+    "max_pixels": 8_294_400,
+    "max_edge": 3840,
+    "multiple": 16,
+}
+
+RESOLUTION_TARGETS = {
+    "1K": {"long_edge": 1536, "square_edge": 1024},
+    "2K": {"long_edge": 2048, "square_edge": 2048},
+    "4K": {"long_edge": 3840, "square_edge": 2880},
+}
+
 
 def extract_image_references(text):
-    """从文本提取图片 URL 和 data URL (从 Luck 项目借鉴)"""
     if not text:
         return []
+
     refs = []
-    # data URL pattern
     data_pattern = r"data:image/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=]+"
     refs.extend(re.findall(data_pattern, text))
-    # URL pattern
+
     url_pattern = r"https?://[^\s)\]\"']+\.(?:png|jpg|jpeg|webp)(?:\?[^\s)\]\"']*)?"
     refs.extend(match[0] if isinstance(match, tuple) else match for match in re.findall(url_pattern, text, re.I))
-    # deduplicate
+
     seen = set()
     unique_refs = []
     for ref in refs:
@@ -46,14 +88,9 @@ def extract_image_references(text):
 
 
 def image_bytes_to_tensor(image_bytes):
-    """图片 bytes 转 ComfyUI tensor"""
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     arr = np.array(img).astype(np.float32) / 255.0
     return torch.from_numpy(arr).unsqueeze(0).float()
-
-
-session = requests.Session()
-session.trust_env = False
 
 
 def emit_runtime_status(
@@ -65,7 +102,6 @@ def emit_runtime_status(
     retry_times=0,
     timeout_seconds=0,
 ):
-    """Send runtime status to the ComfyUI frontend extension."""
     if node_id in (None, ""):
         return
     try:
@@ -91,94 +127,6 @@ def emit_runtime_status(
         pass
 
 
-GPT_IMAGE_MODELS = [
-    "gpt-image-2-all",
-    "gpt-image-2",
-]
-
-ASPECT_RATIO_LABELS = [
-    "1:1",
-    "2:3",
-    "3:2",
-    "3:4",
-    "4:3",
-    "4:5",
-    "5:4",
-    "9:16",
-    "16:9",
-    "21:9",
-    "auto",
-]
-
-TEXT_ASPECT_RATIO_TO_SIZE = {
-    "1:1": "2048x2048",
-    "2:3": "2160x3840",
-    "3:2": "3840x2160",
-    "3:4": "2160x2880",
-    "4:3": "2880x2160",
-    "4:5": "2160x2704",
-    "5:4": "2704x2160",
-    "9:16": "2160x3840",
-    "16:9": "3840x2160",
-    "21:9": "3360x1440",
-    "auto": "auto",
-}
-
-EDIT_ASPECT_RATIO_TO_SIZE = {
-    "1:1": "1024x1024",
-    "2:3": "1024x1536",
-    "3:2": "1536x1024",
-    "3:4": "1024x1536",
-    "4:3": "1536x1024",
-    "4:5": "1024x1536",
-    "5:4": "1536x1024",
-    "9:16": "1024x1536",
-    "16:9": "1536x1024",
-    "21:9": "1536x1024",
-    "auto": "auto",
-}
-
-QUALITY_OPTIONS = ["auto", "low", "medium", "high"]
-OUTPUT_FORMATS = ["png", "jpeg", "webp"]
-MODE_TYPES = ["edit", "reference", "variation"]
-
-# ===== 图生图 /v1/images/edits 专用常量 =====
-EDIT_MODELS = [
-    "gpt-image-2-all",
-    "gpt-image-2",
-]
-
-EDIT_ASPECT_RATIOS = ["9:16", "2:3", "3:4", "1:1", "4:3", "3:2", "16:9", "21:9", "auto"]
-EDIT_RESOLUTIONS = ["1K", "2K"]
-EDIT_QUALITIES = ["auto", "low", "medium", "high"]
-EDIT_BACKGROUNDS = ["auto", "transparent", "opaque"]
-
-EDIT_SIZE_MAP = {
-    "1K": {
-        "1:1":  "1024x1024",
-        "16:9": "1536x1024",
-        "9:16": "1024x1536",
-        "3:2":  "1536x1024",
-        "2:3":  "1024x1536",
-        "4:3":  "1536x1024",
-        "3:4":  "1024x1536",
-        "21:9": "1536x1024",
-        "auto": "auto",
-    },
-    "2K": {
-        "1:1":  "2048x2048",
-        "16:9": "2048x1152",
-        "9:16": "1152x2048",
-        "3:2":  "2048x1365",
-        "2:3":  "1365x2048",
-        "4:3":  "2048x1536",
-        "3:4":  "1536x2048",
-        "21:9": "2048x858",
-        "auto": "auto",
-    },
-}
-
-
 def _strip_data_uri_prefix(base64_str: str) -> str:
     if base64_str.startswith("data:"):
         sep_pos = base64_str.find(",")
@@ -192,10 +140,6 @@ def _safe_convert_rgb(img: Image.Image) -> Image.Image:
         bg = Image.new("RGB", img.size, (255, 255, 255))
         bg.paste(img, mask=img.split()[3])
         return bg
-    if img.mode in ("LA", "P"):
-        return img.convert("RGB")
-    if img.mode in ("L", "RGB", "I", "F"):
-        return img.convert("RGB")
     return img.convert("RGB")
 
 
@@ -220,74 +164,77 @@ def base64_to_tensor(base64_str: str) -> torch.Tensor:
 def comfy_image_to_pil_list(image_any):
     if image_any is None:
         return []
-
     if isinstance(image_any, torch.Tensor) and image_any.dim() == 4:
         return [to_pil_from_comfy(image_any, index=i) for i in range(image_any.shape[0])]
-
     if isinstance(image_any, np.ndarray) and image_any.ndim == 4:
         return [to_pil_from_comfy(image_any, index=i) for i in range(image_any.shape[0])]
-
     return [to_pil_from_comfy(image_any)]
 
 
-def collect_reference_pils(*image_inputs):
-    images = []
-    for image_any in image_inputs:
-        images.extend(comfy_image_to_pil_list(image_any))
-    return images
-
-
-def pil_to_upload_file(pil_image: Image.Image, filename: str, fmt: str):
-    fmt = fmt.lower().strip()
-    mime = {
-        "jpeg": "image/jpeg",
-        "png": "image/png",
-        "webp": "image/webp",
-    }[fmt]
-    buf = save_image_to_buffer(pil_image, fmt, quality=90)
-    return (filename, buf, mime)
-
-
-def parse_size_string(size_text: str):
-    if not size_text or size_text == "auto" or "x" not in size_text:
+def parse_aspect_ratio(aspect_ratio: str):
+    if not aspect_ratio or aspect_ratio == "auto" or ":" not in str(aspect_ratio):
         return None
     try:
-        width_text, height_text = str(size_text).lower().split("x", 1)
-        width = int(width_text)
-        height = int(height_text)
+        width_text, height_text = str(aspect_ratio).split(":", 1)
+        width_ratio = float(width_text)
+        height_ratio = float(height_text)
     except Exception:
         return None
-    if width <= 0 or height <= 0:
+    if width_ratio <= 0 or height_ratio <= 0:
         return None
-    return (width, height)
+    return width_ratio / height_ratio
 
 
-def prepare_edit_reference_image(pil_image: Image.Image, request_size: str) -> Image.Image:
-    image = _safe_convert_rgb(pil_image)
-    target_size = parse_size_string(request_size)
-    if target_size is None:
-        return image
-
-    max_width, max_height = target_size
-    if image.width <= max_width and image.height <= max_height:
-        return image
-
-    resized = image.copy()
-    resized.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-    return resized
+def round_down_multiple(value: float, base: int) -> int:
+    return max(base, int(value) // base * base)
 
 
-def get_edit_timeout_sec() -> int:
-    raw_value = str(os.environ.get("XLJ_GPT_IMAGE_TIMEOUT_SEC", "600")).strip()
-    try:
-        timeout_sec = int(raw_value)
-    except Exception:
-        timeout_sec = 600
-    return max(60, min(timeout_sec, 1800))
+def scale_size_to_constraints(width: int, height: int):
+    max_edge = SIZE_RULES["max_edge"]
+    max_pixels = SIZE_RULES["max_pixels"]
+    multiple = SIZE_RULES["multiple"]
+
+    scale = min(
+        1.0,
+        max_edge / max(width, 1),
+        max_edge / max(height, 1),
+        math.sqrt(max_pixels / max(width * height, 1)),
+    )
+    width = round_down_multiple(width * scale, multiple)
+    height = round_down_multiple(height * scale, multiple)
+
+    while width > max_edge or height > max_edge or (width * height) > max_pixels:
+        width = round_down_multiple(width - multiple, multiple)
+        height = round_down_multiple(height - multiple, multiple)
+
+    return width, height
 
 
-def get_edit_retry_timeout_sec(total_timeout_sec: int) -> int:
-    return max(60, min(120, max(60, int(total_timeout_sec) // 3)))
+def build_request_size(aspect_ratio: str, resolution: str) -> str:
+    if resolution == "auto" or aspect_ratio == "auto":
+        return "auto"
+
+    ratio = parse_aspect_ratio(aspect_ratio)
+    target = RESOLUTION_TARGETS.get(resolution)
+    if ratio is None or target is None:
+        return "auto"
+
+    multiple = SIZE_RULES["multiple"]
+    min_pixels = SIZE_RULES["min_pixels"]
+
+    if math.isclose(ratio, 1.0, rel_tol=1e-6):
+        width = height = target["square_edge"]
+    elif ratio > 1.0:
+        width = target["long_edge"]
+        height = round_down_multiple(width / ratio, multiple)
+    else:
+        height = target["long_edge"]
+        width = round_down_multiple(height * ratio, multiple)
+
+    width, height = scale_size_to_constraints(width, height)
+    if width * height < min_pixels:
+        return "auto"
+    return f"{width}x{height}"
 
 
 def fetch_url_as_base64(image_url: str) -> str:
@@ -312,11 +259,7 @@ def extract_image_base64(response_data: dict) -> str:
         content = choices[0].get("message", {}).get("content", "")
         if content:
             content = content.strip()
-            url_match = re.search(
-                r"https?://\S+?\.(?:png|jpg|jpeg|webp|gif)(?:\?\S*)?",
-                content,
-                re.IGNORECASE,
-            )
+            url_match = re.search(r"https?://\S+?\.(?:png|jpg|jpeg|webp|gif)(?:\?\S*)?", content, re.IGNORECASE)
             if url_match:
                 return fetch_url_as_base64(url_match.group(0).rstrip(')"\'>'))
             if content.startswith("data:"):
@@ -325,6 +268,16 @@ def extract_image_base64(response_data: dict) -> str:
                 return content
 
     raise RuntimeError(f"unable to extract image data from response keys: {list(response_data.keys())}")
+
+
+def save_generated_image_to_output(pil_image: Image.Image, prefix: str) -> str:
+    output_dir = Path(folder_paths.get_output_directory()) / "xlj_gpt_image"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    filename = f"{prefix}_{timestamp}_{int(time.time() * 1000) % 1000:03d}.png"
+    output_path = output_dir / filename
+    pil_image.save(output_path, format="PNG")
+    return str(output_path)
 
 
 def build_prompt(
@@ -346,7 +299,6 @@ def build_prompt(
         full_prompt = f"{full_prompt}, without {negative_prompt.strip()}"
     if system_prompt and system_prompt.strip():
         full_prompt = f"{system_prompt.strip()}\n\n{full_prompt}"
-
     return full_prompt
 
 
@@ -370,34 +322,36 @@ class XLJGPTImageTextToImage:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "model_name": (GPT_IMAGE_MODELS, {"default": GPT_IMAGE_MODELS[0]}),
-                "prompt": ("STRING", {"default": "A beautiful sunset over the ocean", "multiline": True}),
-                "aspect_ratio": (ASPECT_RATIO_LABELS, {"default": "1:1"}),
-                "quality": (QUALITY_OPTIONS, {"default": "auto"}),
-                "api_key": ("STRING", {"default": ""}),
+                "model_name": (GPT_IMAGE_MODELS, {"default": GPT_IMAGE_MODELS[0], "tooltip": "选择 GPT-Image 模型"}),
+                "prompt": ("STRING", {"default": "一张海边日落的唯美照片", "multiline": True, "tooltip": "图像生成提示词"}),
+                "aspect_ratio": (ASPECT_RATIO_LABELS, {"default": "1:1", "tooltip": "输出宽高比"}),
+                "resolution": (RESOLUTION_OPTIONS, {"default": "auto", "tooltip": "输出分辨率档位，按 OpenAI 当前尺寸规则生成合法大小"}),
+                "quality": (QUALITY_OPTIONS, {"default": "auto", "tooltip": "生成质量"}),
+                "api_key": ("STRING", {"default": "", "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"}),
             },
             "optional": {
-                "system_prompt": ("STRING", {"default": "", "multiline": True}),
-                "negative_prompt": ("STRING", {"default": "", "multiline": True}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 2147483647}),
-                "style_preset": ("STRING", {"default": ""}),
-                "output_format": (OUTPUT_FORMATS, {"default": "png"}),
+                "system_prompt": ("STRING", {"default": "", "multiline": True, "tooltip": "系统提示词"}),
+                "negative_prompt": ("STRING", {"default": "", "multiline": True, "tooltip": "负面提示词"}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 2147483647, "tooltip": "保留字段，当前接口不会实际发送"}),
+                "style_preset": ("STRING", {"default": "", "tooltip": "风格补充词"}),
+                "output_format": (OUTPUT_FORMATS, {"default": "png", "tooltip": "输出格式"}),
             },
         }
 
     @classmethod
     def INPUT_LABELS(cls):
         return {
-            "model_name": "Model",
-            "prompt": "Prompt",
-            "aspect_ratio": "Aspect Ratio",
-            "quality": "Quality",
-            "api_key": "API Key",
-            "system_prompt": "System Prompt",
-            "negative_prompt": "Negative Prompt",
-            "seed": "Seed",
-            "style_preset": "Style Preset",
-            "output_format": "Output Format",
+            "model_name": "模型",
+            "prompt": "提示词",
+            "aspect_ratio": "宽高比",
+            "resolution": "输出分辨率",
+            "quality": "质量",
+            "api_key": "API 密钥",
+            "system_prompt": "系统提示词",
+            "negative_prompt": "负面提示词",
+            "seed": "随机种子",
+            "style_preset": "风格预设",
+            "output_format": "输出格式",
         }
 
     RETURN_TYPES = ("IMAGE", "STRING")
@@ -411,6 +365,7 @@ class XLJGPTImageTextToImage:
         model_name,
         prompt,
         aspect_ratio,
+        resolution,
         quality,
         api_key,
         system_prompt="",
@@ -423,7 +378,7 @@ class XLJGPTImageTextToImage:
         if not api_key:
             raise RuntimeError("API key is required")
 
-        request_size = TEXT_ASPECT_RATIO_TO_SIZE.get(aspect_ratio, "auto")
+        request_size = build_request_size(aspect_ratio, resolution)
         full_prompt = build_prompt(prompt, system_prompt, negative_prompt, style_preset)
 
         payload = {
@@ -438,11 +393,11 @@ class XLJGPTImageTextToImage:
 
         print(f"[ComfyUI-XLJ-api] GPT-Image text-to-image: {full_prompt[:60]}...")
         print(
-            f"[ComfyUI-XLJ-api] model={model_name} ratio={aspect_ratio} size={request_size} "
-            f"quality={quality} format={output_format}"
+            f"[ComfyUI-XLJ-api] model={model_name} ratio={aspect_ratio} resolution={resolution} "
+            f"size={request_size} quality={quality} format={output_format}"
         )
         if int(seed or 0) != 0:
-            print("[ComfyUI-XLJ-api] seed was provided but is not sent because the current Apifox doc does not define it.")
+            print("[ComfyUI-XLJ-api] seed was provided but is not sent because the current API does not expose it.")
 
         endpoint = f"{API_BASE}/v1/images/generations"
         headers = http_headers_json(api_key)
@@ -450,28 +405,26 @@ class XLJGPTImageTextToImage:
         try:
             resp = session.post(endpoint, headers=headers, data=json.dumps(payload), timeout=(30, 300))
             response_text = resp.text
-
             if resp.status_code >= 400:
-                raise RuntimeError(f"GPT-Image text-to-image failed: {parse_error_message(response_text, resp.status_code)}")
+                raise RuntimeError(parse_error_message(response_text, resp.status_code))
 
             response_data = json.loads(response_text)
-            image_tensor = base64_to_tensor(extract_image_base64(response_data))
+            image_base64 = extract_image_base64(response_data)
+            image_tensor = base64_to_tensor(image_base64)
+            saved_path = save_generated_image_to_output(base64_to_pil(image_base64), "gpt_text2img")
             status = (
-                f"model: {model_name} | ratio: {aspect_ratio} | size: {request_size} | "
+                f"model: {model_name} | ratio: {aspect_ratio} | resolution: {resolution} | size: {request_size} | "
                 f"quality: {quality} | format: {output_format}"
             )
             if int(seed or 0) != 0:
                 status += f" | seed_input: {int(seed)} (not sent)"
-
-            print("[ComfyUI-XLJ-api] GPT-Image text-to-image done")
+            status += f" | saved: {saved_path}"
             return (image_tensor, status)
-        except Exception as e:
-            raise RuntimeError(f"GPT-Image text-to-image failed: {str(e)}")
+        except Exception as exc:
+            raise RuntimeError(f"GPT-Image text-to-image failed: {exc}")
 
 
 class XLJGPTImageImageToImage:
-    """GPT-Image 图生图节点 — POST /v1/images/edits (multipart/form-data)"""
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -479,15 +432,14 @@ class XLJGPTImageImageToImage:
                 "model": (EDIT_MODELS, {"default": EDIT_MODELS[0], "tooltip": "选择模型"}),
                 "prompt": ("STRING", {"default": "将他们合并在一个图片里面", "multiline": True, "tooltip": "图像编辑提示词"}),
                 "aspect_ratio": (EDIT_ASPECT_RATIOS, {"default": "1:1", "tooltip": "输出宽高比"}),
-                "resolution": (EDIT_RESOLUTIONS, {"default": "1K", "tooltip": "输出分辨率"}),
+                "resolution": (EDIT_RESOLUTIONS, {"default": "1K", "tooltip": "输出分辨率档位，按 OpenAI 当前尺寸规则生成合法大小"}),
                 "quality": (EDIT_QUALITIES, {"default": "auto", "tooltip": "生成质量"}),
                 "api_key": ("STRING", {"default": "", "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"}),
                 "timeout_seconds": ("INT", {"default": 180, "min": 30, "max": 1200, "tooltip": "请求超时秒数"}),
-                "retry_times": ("INT", {"default": 3, "min": 1, "max": 10, "tooltip": "失败重试次数"}),
             },
             "optional": {
-                "background": (EDIT_BACKGROUNDS, {"default": "auto", "tooltip": "背景透明度（仅 gpt-image-1 支持）"}),
-                "n": ("INT", {"default": 1, "min": 1, "max": 10, "tooltip": "生成图片张数（1-10张）"}),
+                "background": (EDIT_BACKGROUNDS, {"default": "auto", "tooltip": "背景模式，gpt-image-2 不支持 transparent"}),
+                "n": ("INT", {"default": 1, "min": 1, "max": 10, "tooltip": "生成图片张数（1-10 张）"}),
                 "image_input": ("IMAGE", {"tooltip": "参考图片 1"}),
                 "image_input_2": ("IMAGE", {"tooltip": "参考图片 2"}),
                 "image_input_3": ("IMAGE", {"tooltip": "参考图片 3"}),
@@ -515,7 +467,6 @@ class XLJGPTImageImageToImage:
             "quality": "质量",
             "api_key": "API 密钥",
             "timeout_seconds": "超时(秒)",
-            "retry_times": "重试次数",
             "background": "背景",
             "n": "生成图片张数",
             "image_input": "图片1",
@@ -537,51 +488,74 @@ class XLJGPTImageImageToImage:
     CATEGORY = "XLJ/GPT"
     OUTPUT_NODE = True
 
-    def generate(self, model, prompt, aspect_ratio, resolution, quality, api_key,
-                 timeout_seconds, retry_times,
-                 background="auto", n=1,
-                 unique_id=None,
-                 image_input=None, image_input_2=None, image_input_3=None,
-                 image_input_4=None, image_input_5=None, image_input_6=None,
-                 image_input_7=None, image_input_8=None, image_input_9=None,
-                 image_input_10=None,
-                 image_mask=None):
-
+    def generate(
+        self,
+        model,
+        prompt,
+        aspect_ratio,
+        resolution,
+        quality,
+        api_key,
+        timeout_seconds,
+        background="auto",
+        n=1,
+        unique_id=None,
+        image_input=None,
+        image_input_2=None,
+        image_input_3=None,
+        image_input_4=None,
+        image_input_5=None,
+        image_input_6=None,
+        image_input_7=None,
+        image_input_8=None,
+        image_input_9=None,
+        image_input_10=None,
+        image_mask=None,
+    ):
         start_ts = time.time()
+        retry_times = 1
 
-        # --- API Key ---
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
             emit_runtime_status(unique_id, "error", "API Key 为空", 0.0, 0, retry_times, timeout_seconds)
             raise RuntimeError("API Key 不能为空（在节点填入或设置环境变量 XLJ_API_KEY）")
 
-        # --- prompt ---
         effective_prompt = (prompt or "").strip()
         if not effective_prompt:
             emit_runtime_status(unique_id, "error", "提示词为空", 0.0, 0, retry_times, timeout_seconds)
             raise RuntimeError("提示词不能为空")
 
-        # --- size = 宽高比 × 分辨率 ---
-        size = EDIT_SIZE_MAP.get(resolution, EDIT_SIZE_MAP["1K"]).get(aspect_ratio, "auto")
+        size = build_request_size(aspect_ratio, resolution)
 
-        # --- 收集图片（multipart files） ---
         image_payloads = []
-        for i, img in enumerate([image_input, image_input_2, image_input_3, image_input_4, image_input_5, image_input_6, image_input_7, image_input_8, image_input_9, image_input_10], 1):
-            if img is not None:
-                pil_list = comfy_image_to_pil_list(img)
-                if pil_list:
-                    pil = pil_list[0]
-                    buf = io.BytesIO()
-                    pil.save(buf, format="PNG")
-                    buf.seek(0)
-                    image_payloads.append((f"image_{i}.png", buf.getvalue()))
-                    print(f"[ComfyUI-XLJ-api] 信陵君 图片{i}: {pil.width}x{pil.height}")
+        image_inputs = [
+            image_input,
+            image_input_2,
+            image_input_3,
+            image_input_4,
+            image_input_5,
+            image_input_6,
+            image_input_7,
+            image_input_8,
+            image_input_9,
+            image_input_10,
+        ]
+        for index, img in enumerate(image_inputs, 1):
+            if img is None:
+                continue
+            pil_list = comfy_image_to_pil_list(img)
+            if not pil_list:
+                continue
+            pil = pil_list[0]
+            buf = io.BytesIO()
+            pil.save(buf, format="PNG")
+            image_payloads.append((f"image_{index}.png", buf.getvalue()))
+            print(f"[ComfyUI-XLJ-api] GPT-Image image input {index}: {pil.width}x{pil.height}")
 
         if not image_payloads:
             emit_runtime_status(unique_id, "error", "至少需要一张图片", 0.0, 0, retry_times, timeout_seconds)
             raise RuntimeError("至少需要连接一张参考图到 image_input")
 
-        # --- mask 处理 ---
         mask_bytes = None
         if image_mask is not None:
             try:
@@ -589,147 +563,104 @@ class XLJGPTImageImageToImage:
                 mbuf = io.BytesIO()
                 mask_pil.save(mbuf, format="PNG")
                 mask_bytes = mbuf.getvalue()
-                print("[ComfyUI-XLJ-api] 信陵君 已添加遮罩")
-            except Exception as e:
-                print(f"[ComfyUI-XLJ-api] 信陵君 遮罩处理失败，已忽略: {e}")
+            except Exception as exc:
+                print(f"[ComfyUI-XLJ-api] GPT-Image mask ignored: {exc}")
 
-        # --- 锁定 API 地址 ---
         endpoint = f"{API_BASE}/v1/images/edits"
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
         }
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT-Image 编辑 | model={model} ratio={aspect_ratio} "
-              f"res={resolution} size={size} images={len(image_payloads)}")
-
+        print(
+            f"[ComfyUI-XLJ-api] GPT-Image edit | model={model} ratio={aspect_ratio} "
+            f"resolution={resolution} size={size} images={len(image_payloads)}"
+        )
         emit_runtime_status(unique_id, "running", "开始请求", 0.0, 0, retry_times, timeout_seconds)
 
-        last_error = None
-        for attempt in range(1, retry_times + 1):
-            try:
-                emit_runtime_status(
-                    unique_id, "running",
-                    f"请求中 ({attempt}/{retry_times})",
-                    time.time() - start_ts, attempt, retry_times, timeout_seconds,
-                )
+        try:
+            emit_runtime_status(unique_id, "running", "请求中", time.time() - start_ts, 1, retry_times, timeout_seconds)
 
-                # --- multipart/form-data ---
-                files = []
-                for fname, b in image_payloads:
-                    files.append(("image", (fname, b, "image/png")))
-                if mask_bytes is not None:
-                    files.append(("mask", ("mask.png", mask_bytes, "image/png")))
+            files = [("image", (fname, data, "image/png")) for fname, data in image_payloads]
+            if mask_bytes is not None:
+                files.append(("mask", ("mask.png", mask_bytes, "image/png")))
 
-                form_data = {
-                    "prompt": effective_prompt,
-                    "model": model,
-                    "n": str(int(n)),
-                    "quality": quality,
-                }
-                if size and size != "auto":
-                    form_data["size"] = size
-                if background and background != "auto":
-                    form_data["background"] = background
+            form_data = {
+                "prompt": effective_prompt,
+                "model": model,
+                "n": str(int(n)),
+                "quality": quality,
+            }
+            if size and size != "auto":
+                form_data["size"] = size
+            if background and background != "auto":
+                form_data["background"] = background
 
-                response = session.post(
-                    endpoint, headers=headers,
-                    data=form_data, files=files,
-                    timeout=timeout_seconds,
-                )
+            response = session.post(
+                endpoint,
+                headers=headers,
+                data=form_data,
+                files=files,
+                timeout=timeout_seconds,
+            )
+            if response.status_code != 200:
+                raise RuntimeError(f"API 错误 {response.status_code}: {response.text[:300]}")
 
-                if response.status_code != 200:
-                    last_error = f"API 错误 {response.status_code}: {response.text[:300]}"
-                    if response.status_code in (408, 429) or response.status_code >= 500:
-                        if attempt < retry_times:
-                            emit_runtime_status(
-                                unique_id, "running",
-                                f"API 返回 {response.status_code}，重试 ({attempt}/{retry_times})",
-                                time.time() - start_ts, attempt, retry_times, timeout_seconds,
-                            )
-                            time.sleep(min(2 ** (attempt - 1), 8))
-                            continue
-                    raise RuntimeError(last_error)
+            data = response.json()
+            emit_runtime_status(unique_id, "running", "解析图片", time.time() - start_ts, 1, retry_times, timeout_seconds)
 
-                data = response.json()
-                emit_runtime_status(
-                    unique_id, "running", "解析图片",
-                    time.time() - start_ts, attempt, retry_times, timeout_seconds,
-                )
+            image_tensor = None
+            output_pil = None
+            img_data = data.get("data")
+            if isinstance(img_data, list) and img_data:
+                item = img_data[0]
+                b64 = item.get("b64_json")
+                if b64:
+                    output_pil = base64_to_pil(b64)
+                    image_tensor = base64_to_tensor(b64)
+                else:
+                    img_url = item.get("url")
+                    if img_url:
+                        dl = session.get(img_url, timeout=timeout_seconds)
+                        dl.raise_for_status()
+                        output_pil = Image.open(io.BytesIO(dl.content)).convert("RGB")
+                        image_tensor = image_bytes_to_tensor(dl.content)
 
-                # --- 解析响应（兼容 data[].b64_json/url 和 choices[].message.content）---
-                image_tensor = None
-
-                img_data = data.get("data")
-                if isinstance(img_data, list) and img_data:
-                    item = img_data[0]
-                    b64 = item.get("b64_json")
-                    if b64:
-                        image_tensor = base64_to_tensor(b64)
-                    else:
-                        img_url = item.get("url")
-                        if img_url:
-                            dl = session.get(img_url, timeout=timeout_seconds)
+            if image_tensor is None:
+                choices = data.get("choices") or []
+                if choices:
+                    msg_content = (choices[0].get("message") or {}).get("content") or ""
+                    refs = extract_image_references(msg_content)
+                    if refs:
+                        first_ref = refs[0]
+                        if first_ref.startswith("data:"):
+                            output_pil = base64_to_pil(_strip_data_uri_prefix(first_ref))
+                            image_tensor = base64_to_tensor(_strip_data_uri_prefix(first_ref))
+                        else:
+                            dl = session.get(first_ref, timeout=timeout_seconds)
                             dl.raise_for_status()
+                            output_pil = Image.open(io.BytesIO(dl.content)).convert("RGB")
                             image_tensor = image_bytes_to_tensor(dl.content)
 
-                if image_tensor is None:
-                    choices = data.get("choices") or []
-                    if choices:
-                        msg_content = (choices[0].get("message") or {}).get("content") or ""
-                        refs = extract_image_references(msg_content)
-                        if refs:
-                            first_ref = refs[0]
-                            if first_ref.startswith("data:"):
-                                image_tensor = base64_to_tensor(_strip_data_uri_prefix(first_ref))
-                            else:
-                                dl = session.get(first_ref, timeout=timeout_seconds)
-                                dl.raise_for_status()
-                                image_tensor = image_bytes_to_tensor(dl.content)
+            if image_tensor is None:
+                raise RuntimeError(f"无法从响应提取图片: {json.dumps(data, ensure_ascii=False)[:300]}")
 
-                if image_tensor is None:
-                    raise RuntimeError(f"无法从响应提取图片: {json.dumps(data, ensure_ascii=False)[:300]}")
-
-                elapsed = time.time() - start_ts
-                status = (f"model={model} | ratio={aspect_ratio} | res={resolution} | "
-                          f"size={size} | elapsed={elapsed:.1f}s")
-                emit_runtime_status(
-                    unique_id, "success",
-                    f"生成完成 ({elapsed:.1f}s)",
-                    elapsed, attempt, retry_times, timeout_seconds,
-                )
-                print(f"[ComfyUI-XLJ-api] 信陵君 GPT-Image 编辑成功 {elapsed:.1f}s")
-                return (image_tensor, status)
-
-            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
-                last_error = str(exc)
-                if attempt < retry_times:
-                    emit_runtime_status(
-                        unique_id, "running",
-                        f"网络超时，重试 ({attempt}/{retry_times})",
-                        time.time() - start_ts, attempt, retry_times, timeout_seconds,
-                    )
-                    time.sleep(min(2 ** (attempt - 1), 8))
-                    continue
-                break
-            except Exception as exc:
-                last_error = str(exc)
-                if attempt < retry_times:
-                    time.sleep(min(2 ** (attempt - 1), 8))
-                    continue
-                emit_runtime_status(
-                    unique_id, "error", last_error,
-                    time.time() - start_ts, attempt, retry_times, timeout_seconds,
-                )
-                raise RuntimeError(f"生成失败: {last_error}")
-
-        elapsed = time.time() - start_ts
-        emit_runtime_status(
-            unique_id, "error",
-            f"连续 {retry_times} 次失败",
-            elapsed, retry_times, retry_times, timeout_seconds,
-        )
-        raise RuntimeError(f"连续 {retry_times} 次失败: {last_error}")
+            elapsed = time.time() - start_ts
+            saved_path = ""
+            if output_pil is not None:
+                saved_path = save_generated_image_to_output(output_pil, "gpt_img2img")
+            status = (
+                f"model={model} | ratio={aspect_ratio} | resolution={resolution} | "
+                f"size={size} | elapsed={elapsed:.1f}s"
+            )
+            if saved_path:
+                status += f" | saved: {saved_path}"
+            emit_runtime_status(unique_id, "success", f"生成完成 ({elapsed:.1f}s)", elapsed, 1, retry_times, timeout_seconds)
+            return (image_tensor, status)
+        except Exception as exc:
+            elapsed = time.time() - start_ts
+            emit_runtime_status(unique_id, "error", str(exc), elapsed, 1, retry_times, timeout_seconds)
+            raise RuntimeError(f"生成失败: {exc}")
 
 
 NODE_CLASS_MAPPINGS = {

@@ -13,8 +13,8 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "XLJDocumentLoader": "XLJ Document Loader",
-    "XLJGPTTextProcessor": "XLJ GPT Text Processor",
-    "XLJGPTImageTextToImage": "XLJ GPT-Image Text to Image",
-    "XLJGPTImageImageToImage": "XLJ GPT-Image Image to Image",
+    "XLJDocumentLoader": "XLJ 文档加载器",
+    "XLJGPTTextProcessor": "XLJ GPT 文本处理",
+    "XLJGPTImageTextToImage": "XLJ GPT-Image 文生图",
+    "XLJGPTImageImageToImage": "XLJ GPT-Image 图生图",
 }
