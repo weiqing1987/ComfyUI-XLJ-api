@@ -1,0 +1,775 @@
+﻿{
+    "id":  "xlj-suno-text-to-music-v2",
+    "last_node_id":  12,
+    "last_link_id":  12,
+    "nodes":  [
+                  {
+                      "id":  1,
+                      "type":  "ttN text",
+                      "pos":  [
+                                  -980,
+                                  80
+                              ],
+                      "size":  [
+                                   520,
+                                   240
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  0,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "name":  "text",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "text"
+                                                    }
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "name":  "text",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        1
+                                                    ],
+                                          "slot_index":  0
+                                      }
+                                  ],
+                      "title":  "歌词",
+                      "properties":  {
+                                         "Node name for S\u0026R":  "ttN text"
+                                     },
+                      "widgets_values":  [
+                                             "[Verse]\\nMoonlight falls on silent rivers\\nSoft winds drift through ancient trees\\nI keep your name inside the water\\nAnd let the night sing back to me\\n\\n[Chorus]\\nStay with me through dawn and distance\\nLet the stars lean low and bright\\nEvery step becomes a promise\\nEvery breath becomes the light",
+                                             [
+                                                 false,
+                                                 true
+                                             ]
+                                         ]
+                  },
+                  {
+                      "id":  2,
+                      "type":  "ttN text",
+                      "pos":  [
+                                  -980,
+                                  360
+                              ],
+                      "size":  [
+                                   520,
+                                   150
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  1,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "name":  "text",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "text"
+                                                    }
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "name":  "text",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        2
+                                                    ],
+                                          "slot_index":  0
+                                      }
+                                  ],
+                      "title":  "自定义风格标签",
+                      "properties":  {
+                                         "Node name for S\u0026R":  "ttN text"
+                                     },
+                      "widgets_values":  [
+                                             "ambient pop, cinematic, female vocal, emotional",
+                                             [
+                                                 false,
+                                                 true
+                                             ]
+                                         ]
+                  },
+                  {
+                      "id":  3,
+                      "type":  "ttN text",
+                      "pos":  [
+                                  -980,
+                                  580
+                              ],
+                      "size":  [
+                                   520,
+                                   110
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  2,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "name":  "text",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "text"
+                                                    }
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "name":  "text",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        3
+                                                    ],
+                                          "slot_index":  0
+                                      }
+                                  ],
+                      "title":  "歌曲名",
+                      "properties":  {
+                                         "Node name for S\u0026R":  "ttN text"
+                                     },
+                      "widgets_values":  [
+                                             "Moon Over River",
+                                             [
+                                                 false,
+                                                 true
+                                             ]
+                                         ]
+                  },
+                  {
+                      "id":  9,
+                      "type":  "XLJSunoPromptPreset",
+                      "pos":  [
+                                  -380,
+                                  320
+                              ],
+                      "size":  [
+                                   420,
+                                   320
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  3,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "name":  "已有标签",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "已有标签"
+                                                    },
+                                         "link":  2
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "name":  "预设英文标签",
+                                          "type":  "STRING",
+                                          "links":  null
+                                      },
+                                      {
+                                          "name":  "合并后标签",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        4
+                                                    ],
+                                          "slot_index":  1
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "XLJSunoPromptPreset"
+                                     },
+                      "widgets_values":  [
+                                             "宽广",
+                                             "近场",
+                                             "录音室感",
+                                             "中央定位",
+                                             "空灵",
+                                             ""
+                                         ]
+                  },
+                  {
+                      "id":  4,
+                      "type":  "XLJSunoCreateMusicAndWait",
+                      "pos":  [
+                                  120,
+                                  220
+                              ],
+                      "size":  [
+                                   470,
+                                   560
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  4,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "name":  "prompt",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "prompt"
+                                                    },
+                                         "link":  1
+                                     },
+                                     {
+                                         "name":  "tags",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "tags"
+                                                    },
+                                         "link":  4
+                                     },
+                                     {
+                                         "name":  "title",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "title"
+                                                    },
+                                         "link":  3
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "name":  "task_id",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        5
+                                                    ],
+                                          "slot_index":  0
+                                      },
+                                      {
+                                          "name":  "status",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        6
+                                                    ],
+                                          "slot_index":  1
+                                      },
+                                      {
+                                          "name":  "clip_id_1",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        9
+                                                    ],
+                                          "slot_index":  2
+                                      },
+                                      {
+                                          "name":  "clip_id_2",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        11
+                                                    ],
+                                          "slot_index":  3
+                                      },
+                                      {
+                                          "name":  "audio_url_1",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        7
+                                                    ],
+                                          "slot_index":  4
+                                      },
+                                      {
+                                          "name":  "audio_url_2",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        10
+                                                    ],
+                                          "slot_index":  5
+                                      },
+                                      {
+                                          "name":  "image_url_1",
+                                          "type":  "STRING",
+                                          "links":  null
+                                      },
+                                      {
+                                          "name":  "image_url_2",
+                                          "type":  "STRING",
+                                          "links":  null
+                                      },
+                                      {
+                                          "name":  "raw_json",
+                                          "type":  "STRING",
+                                          "links":  null
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "XLJSunoCreateMusicAndWait"
+                                     },
+                      "widgets_values":  [
+                                             "custom",
+                                             "v5.5 (chirp-fenix | 最长8分钟)",
+                                             "",
+                                             "",
+                                             "",
+                                             "",
+                                             "",
+                                             "TEXT",
+                                             "",
+                                             false,
+                                             "https://xinlingjunai.cn",
+                                             "",
+                                             "f",
+                                             120,
+                                             true,
+                                             15,
+                                             1800,
+                                             120
+                                         ]
+                  },
+                  {
+                      "id":  5,
+                      "type":  "easy showAnything",
+                      "pos":  [
+                                  760,
+                                  110
+                              ],
+                      "size":  [
+                                   320,
+                                   90
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  5,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "label":  "anything",
+                                         "name":  "anything",
+                                         "shape":  7,
+                                         "type":  "*",
+                                         "link":  5
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "label":  "output",
+                                          "name":  "output",
+                                          "type":  "*"
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "easy showAnything"
+                                     },
+                      "widgets_values":  [
+                                             ""
+                                         ]
+                  },
+                  {
+                      "id":  6,
+                      "type":  "easy showAnything",
+                      "pos":  [
+                                  760,
+                                  240
+                              ],
+                      "size":  [
+                                   320,
+                                   90
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  6,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "label":  "anything",
+                                         "name":  "anything",
+                                         "shape":  7,
+                                         "type":  "*",
+                                         "link":  6
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "label":  "output",
+                                          "name":  "output",
+                                          "type":  "*"
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "easy showAnything"
+                                     },
+                      "widgets_values":  [
+                                             ""
+                                         ]
+                  },
+                  {
+                      "id":  7,
+                      "type":  "easy showAnything",
+                      "pos":  [
+                                  760,
+                                  370
+                              ],
+                      "size":  [
+                                   520,
+                                   90
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  7,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "label":  "anything",
+                                         "name":  "anything",
+                                         "shape":  7,
+                                         "type":  "*",
+                                         "link":  7
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "label":  "output",
+                                          "name":  "output",
+                                          "type":  "*"
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "easy showAnything"
+                                     },
+                      "widgets_values":  [
+                                             ""
+                                         ]
+                  },
+                  {
+                      "id":  8,
+                      "type":  "easy showAnything",
+                      "pos":  [
+                                  1240,
+                                  720
+                              ],
+                      "size":  [
+                                   520,
+                                   90
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  11,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "label":  "anything",
+                                         "name":  "anything",
+                                         "shape":  7,
+                                         "type":  "*",
+                                         "link":  8
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "label":  "output",
+                                          "name":  "output",
+                                          "type":  "*"
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "easy showAnything"
+                                     },
+                      "widgets_values":  [
+                                             ""
+                                         ]
+                  },
+                  {
+                      "id":  10,
+                      "type":  "XLJSunoDownloadAudio",
+                      "pos":  [
+                                  760,
+                                  650
+                              ],
+                      "size":  [
+                                   420,
+                                   220
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  9,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "name":  "audio_url",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "audio_url"
+                                                    },
+                                         "link":  7
+                                     },
+                                     {
+                                         "name":  "clip_id",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "clip_id"
+                                                    },
+                                         "link":  9
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "name":  "本地文件路径",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        8
+                                                    ],
+                                          "slot_index":  0
+                                      },
+                                      {
+                                          "name":  "最终下载链接",
+                                          "type":  "STRING",
+                                          "links":  null
+                                      },
+                                      {
+                                          "name":  "状态",
+                                          "type":  "STRING",
+                                          "links":  null
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "XLJSunoDownloadAudio"
+                                     },
+                      "widgets_values":  [
+                                             "",
+                                             "",
+                                             "",
+                                             "https://xinlingjunai.cn",
+                                             "suno_song_1",
+                                             "mp3",
+                                             120
+                                         ]
+                  },
+                  {
+                      "id":  11,
+                      "type":  "XLJSunoDownloadAudio",
+                      "pos":  [
+                                  760,
+                                  910
+                              ],
+                      "size":  [
+                                   420,
+                                   220
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  10,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "name":  "audio_url",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "audio_url"
+                                                    },
+                                         "link":  10
+                                     },
+                                     {
+                                         "name":  "clip_id",
+                                         "type":  "STRING",
+                                         "widget":  {
+                                                        "name":  "clip_id"
+                                                    },
+                                         "link":  11
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "name":  "本地文件路径",
+                                          "type":  "STRING",
+                                          "links":  [
+                                                        12
+                                                    ],
+                                          "slot_index":  0
+                                      },
+                                      {
+                                          "name":  "最终下载链接",
+                                          "type":  "STRING",
+                                          "links":  null
+                                      },
+                                      {
+                                          "name":  "状态",
+                                          "type":  "STRING",
+                                          "links":  null
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "XLJSunoDownloadAudio"
+                                     },
+                      "widgets_values":  [
+                                             "",
+                                             "",
+                                             "",
+                                             "https://xinlingjunai.cn",
+                                             "suno_song_2",
+                                             "mp3",
+                                             120
+                                         ]
+                  },
+                  {
+                      "id":  12,
+                      "type":  "easy showAnything",
+                      "pos":  [
+                                  1240,
+                                  970
+                              ],
+                      "size":  [
+                                   520,
+                                   90
+                               ],
+                      "flags":  {
+
+                                },
+                      "order":  12,
+                      "mode":  0,
+                      "inputs":  [
+                                     {
+                                         "label":  "anything",
+                                         "name":  "anything",
+                                         "shape":  7,
+                                         "type":  "*",
+                                         "link":  12
+                                     }
+                                 ],
+                      "outputs":  [
+                                      {
+                                          "label":  "output",
+                                          "name":  "output",
+                                          "type":  "*"
+                                      }
+                                  ],
+                      "properties":  {
+                                         "Node name for S\u0026R":  "easy showAnything"
+                                     },
+                      "widgets_values":  [
+                                             ""
+                                         ]
+                  }
+              ],
+    "links":  [
+                  [
+                      1,
+                      1,
+                      0,
+                      4,
+                      2,
+                      "STRING"
+                  ],
+                  [
+                      2,
+                      2,
+                      0,
+                      9,
+                      5,
+                      "STRING"
+                  ],
+                  [
+                      3,
+                      3,
+                      0,
+                      4,
+                      3,
+                      "STRING"
+                  ],
+                  [
+                      4,
+                      9,
+                      1,
+                      4,
+                      4,
+                      "STRING"
+                  ],
+                  [
+                      5,
+                      4,
+                      0,
+                      5,
+                      0,
+                      "STRING"
+                  ],
+                  [
+                      6,
+                      4,
+                      1,
+                      6,
+                      0,
+                      "STRING"
+                  ],
+                  [
+                      7,
+                      4,
+                      4,
+                      7,
+                      0,
+                      "STRING"
+                  ],
+                  [
+                      8,
+                      10,
+                      0,
+                      8,
+                      0,
+                      "STRING"
+                  ],
+                  [
+                      9,
+                      4,
+                      2,
+                      10,
+                      1,
+                      "STRING"
+                  ],
+                  [
+                      10,
+                      4,
+                      5,
+                      11,
+                      0,
+                      "STRING"
+                  ],
+                  [
+                      11,
+                      4,
+                      3,
+                      11,
+                      1,
+                      "STRING"
+                  ],
+                  [
+                      12,
+                      11,
+                      0,
+                      12,
+                      0,
+                      "STRING"
+                  ]
+              ],
+    "groups":  [
+
+               ],
+    "config":  {
+
+               },
+    "extra":  {
+                  "ds":  {
+                             "scale":  0.72,
+                             "offset":  [
+                                            1000,
+                                            180
+                                        ]
+                         }
+              },
+    "version":  0.4
+}
