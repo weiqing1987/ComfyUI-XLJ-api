@@ -1,0 +1,138 @@
+{
+  "id": "happyhorse-t2v-001",
+  "revision": 0,
+  "last_node_id": 6,
+  "last_link_id": 3,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "ttN text",
+      "pos": [-480, 220],
+      "size": [400, 200],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": { "name": "text" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "text", "name": "text", "type": "STRING", "links": [1] }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_tinyterranodes",
+        "Node name for S&R": "ttN text"
+      },
+      "widgets_values": [
+        "一匹骏马穿越晨雾中的山谷，镜头从低角度跟拍逐渐升空，光线柔和，速度感强，电影感构图。",
+        [false, true]
+      ]
+    },
+    {
+      "id": 2,
+      "type": "XLJHappyHorseTextToVideo",
+      "pos": [80, 160],
+      "size": [340, 240],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": { "name": "prompt" },
+          "link": 1
+        }
+      ],
+      "outputs": [
+        { "name": "task_id", "type": "STRING", "links": [2] },
+        { "name": "status", "type": "STRING", "links": null },
+        { "name": "request_id", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJHappyHorseTextToVideo"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "1080P",
+        "16:9",
+        5,
+        true,
+        120
+      ]
+    },
+    {
+      "id": 3,
+      "type": "XLJHappyHorseQueryTask",
+      "pos": [560, 160],
+      "size": [300, 220],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "widget": { "name": "task_id" },
+          "link": 2
+        }
+      ],
+      "outputs": [
+        { "name": "status", "type": "STRING", "links": null },
+        { "name": "video_url", "type": "STRING", "links": [3] },
+        { "name": "orig_prompt", "type": "STRING", "links": null },
+        { "name": "actual_prompt", "type": "STRING", "links": null },
+        { "name": "raw_json", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJHappyHorseQueryTask"
+      },
+      "widgets_values": ["", "", true, 15, 1800]
+    },
+    {
+      "id": 6,
+      "type": "XLJDownloadVideo",
+      "pos": [980, 160],
+      "size": [270, 150],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "widget": { "name": "video_url" },
+          "link": 3
+        }
+      ],
+      "outputs": [
+        { "name": "path", "type": "STRING", "links": null },
+        { "name": "status", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJDownloadVideo"
+      },
+      "widgets_values": ["", "output/xlj_video", "", 180]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "STRING"],
+    [2, 2, 0, 3, 0, "STRING"],
+    [3, 3, 1, 6, 0, "STRING"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.55,
+      "offset": [590, 350]
+    }
+  },
+  "version": 0.4
+}

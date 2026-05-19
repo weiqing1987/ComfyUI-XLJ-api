@@ -1,0 +1,349 @@
+{
+  "id": "happyhorse-r2v-001",
+  "revision": 0,
+  "last_node_id": 10,
+  "last_link_id": 9,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadImage",
+      "pos": [-1250, 40],
+      "size": [560, 320],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": { "name": "image" },
+          "link": null
+        },
+        {
+          "label": "upload",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": { "name": "upload" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "image", "name": "IMAGE", "type": "IMAGE", "links": [4] },
+        { "label": "mask", "name": "MASK", "type": "MASK", "links": null }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": ["", "image"]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [-1250, 420],
+      "size": [560, 320],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": { "name": "image" },
+          "link": null
+        },
+        {
+          "label": "upload",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": { "name": "upload" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "image", "name": "IMAGE", "type": "IMAGE", "links": [5] },
+        { "label": "mask", "name": "MASK", "type": "MASK", "links": null }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": ["", "image"]
+    },
+    {
+      "id": 3,
+      "type": "LoadImage",
+      "pos": [-1250, 800],
+      "size": [560, 320],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": { "name": "image" },
+          "link": null
+        },
+        {
+          "label": "upload",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": { "name": "upload" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "image", "name": "IMAGE", "type": "IMAGE", "links": [6] },
+        { "label": "mask", "name": "MASK", "type": "MASK", "links": null }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": ["", "image"]
+    },
+    {
+      "id": 4,
+      "type": "XLJUploadToImageHost",
+      "pos": [-560, 100],
+      "size": [270, 150],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        { "name": "image", "type": "IMAGE", "link": 4 }
+      ],
+      "outputs": [
+        { "name": "image_url", "type": "STRING", "links": [7] },
+        { "name": "created_at", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJUploadToImageHost"
+      },
+      "widgets_values": [
+        "https://imageproxy.zhongzhuan.chat/api/upload",
+        "jpeg",
+        100,
+        30
+      ]
+    },
+    {
+      "id": 5,
+      "type": "XLJUploadToImageHost",
+      "pos": [-560, 480],
+      "size": [270, 150],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        { "name": "image", "type": "IMAGE", "link": 5 }
+      ],
+      "outputs": [
+        { "name": "image_url", "type": "STRING", "links": [8] },
+        { "name": "created_at", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJUploadToImageHost"
+      },
+      "widgets_values": [
+        "https://imageproxy.zhongzhuan.chat/api/upload",
+        "jpeg",
+        100,
+        30
+      ]
+    },
+    {
+      "id": 6,
+      "type": "XLJUploadToImageHost",
+      "pos": [-560, 860],
+      "size": [270, 150],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        { "name": "image", "type": "IMAGE", "link": 6 }
+      ],
+      "outputs": [
+        { "name": "image_url", "type": "STRING", "links": [9] },
+        { "name": "created_at", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJUploadToImageHost"
+      },
+      "widgets_values": [
+        "https://imageproxy.zhongzhuan.chat/api/upload",
+        "jpeg",
+        100,
+        30
+      ]
+    },
+    {
+      "id": 7,
+      "type": "ttN text",
+      "pos": [-560, 1180],
+      "size": [460, 240],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": { "name": "text" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "label": "text", "name": "text", "type": "STRING", "links": [1] }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_tinyterranodes",
+        "Node name for S&R": "ttN text"
+      },
+      "widgets_values": [
+        "[Image 1]中的角色从侧身缓慢转向镜头，[Image 2]中的配饰在动作中自然摆动，镜头再切到 [Image 3] 的环境氛围元素，整体风格统一，节奏流畅，突出角色一致性。",
+        [false, true]
+      ]
+    },
+    {
+      "id": 8,
+      "type": "XLJHappyHorseReferenceToVideo",
+      "pos": [60, 460],
+      "size": [400, 420],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": { "name": "prompt" },
+          "link": 1
+        },
+        {
+          "name": "reference_image_1",
+          "type": "STRING",
+          "widget": { "name": "reference_image_1" },
+          "link": 7
+        },
+        {
+          "name": "reference_image_2",
+          "type": "STRING",
+          "widget": { "name": "reference_image_2" },
+          "link": 8
+        },
+        {
+          "name": "reference_image_3",
+          "type": "STRING",
+          "widget": { "name": "reference_image_3" },
+          "link": 9
+        }
+      ],
+      "outputs": [
+        { "name": "task_id", "type": "STRING", "links": [2] },
+        { "name": "status", "type": "STRING", "links": null },
+        { "name": "request_id", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJHappyHorseReferenceToVideo"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "",
+        "1080P",
+        "16:9",
+        5,
+        true,
+        120,
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "id": 9,
+      "type": "XLJHappyHorseQueryTask",
+      "pos": [620, 520],
+      "size": [300, 220],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "widget": { "name": "task_id" },
+          "link": 2
+        }
+      ],
+      "outputs": [
+        { "name": "status", "type": "STRING", "links": null },
+        { "name": "video_url", "type": "STRING", "links": [3] },
+        { "name": "orig_prompt", "type": "STRING", "links": null },
+        { "name": "actual_prompt", "type": "STRING", "links": null },
+        { "name": "raw_json", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJHappyHorseQueryTask"
+      },
+      "widgets_values": ["", "", true, 15, 1800]
+    },
+    {
+      "id": 10,
+      "type": "XLJDownloadVideo",
+      "pos": [1040, 520],
+      "size": [270, 150],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "widget": { "name": "video_url" },
+          "link": 3
+        }
+      ],
+      "outputs": [
+        { "name": "path", "type": "STRING", "links": null },
+        { "name": "status", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJDownloadVideo"
+      },
+      "widgets_values": ["", "output/xlj_video", "", 180]
+    }
+  ],
+  "links": [
+    [1, 7, 0, 8, 0, "STRING"],
+    [2, 8, 0, 9, 0, "STRING"],
+    [3, 9, 1, 10, 0, "STRING"],
+    [4, 1, 0, 4, 0, "IMAGE"],
+    [5, 2, 0, 5, 0, "IMAGE"],
+    [6, 3, 0, 6, 0, "IMAGE"],
+    [7, 4, 0, 8, 1, "STRING"],
+    [8, 5, 0, 8, 2, "STRING"],
+    [9, 6, 0, 8, 3, "STRING"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.24,
+      "offset": [1760, 530]
+    }
+  },
+  "version": 0.4
+}
