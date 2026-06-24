@@ -45,6 +45,7 @@ Thumbs.db
 
 # Output files
 output/
+test_outputs/
 *.json
 !config.json
 !workflows/

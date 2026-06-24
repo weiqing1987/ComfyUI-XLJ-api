@@ -61,6 +61,7 @@ XLJ_API_KEY=your_api_key_here
 - `veo3+图生视频-API调用.json`
 - `viduq+图生视频-API调用.json`
 - `banana+参考图出图-API调用.json`
+- `seedream+文生图-API调用.json`
 - `seedream+参考图出图-API调用.json`
 - `gpt-image-2-all+文生图-API调用.json`
 - `gpt-image-2-all+图生图-API调用.json`
@@ -102,7 +103,8 @@ XLJ_API_KEY=your_api_key_here
 
 ### Seedream
 
-- `XLJSeedreamCreateImage`
+- `XLJSeedreamTextToImage` - 文生图
+- `XLJSeedreamImageToImage` - 图生图（支持多张参考图）
 
 ### GPT
 
@@ -158,6 +160,7 @@ XLJ_API_KEY=your_api_key_here
 ### Seedream (即梦)
 
 - `doubao-seedream-5-0-260128`
+- `doubao-seedream-5-0-lite-260128`
 - `doubao-seedream-4-0-250828`
 - `doubao-seedream-4-5-251128`
 - `doubao-seededit-3-0-i2i-250628`
