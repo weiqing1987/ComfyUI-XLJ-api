@@ -153,7 +153,7 @@ class XLJGrokBatchProcessor:
         if not prompt:
             raise ValueError("提示词 (prompt) 不能为空")
 
-        model = task.get("model", "grok-video-3").strip()
+        model = task.get("model", "grok-imagine-video").strip()
         aspect_ratio = task.get("aspect_ratio", "16:9").strip()
         size = task.get("size", "1080P").strip()
 
@@ -171,8 +171,8 @@ class XLJGrokBatchProcessor:
 
         output_prefix = task.get("output_prefix", f"task_{task_idx}").strip()
 
-        if model not in ["grok-video-3", "grok-video-3-10s"]:
-            raise ValueError(f"无效的模型：{model}，必须是 grok-video-3 或 grok-video-3-10s")
+        if model not in ["grok-imagine-video", "grok-imagine-video-1.5-preview"]:
+            raise ValueError(f"无效的模型：{model}，必须是 grok-imagine-video 或 grok-imagine-video-1.5-preview")
         if aspect_ratio not in ["9:16", "16:9", "1:1", "2:3", "3:2"]:
             raise ValueError(f"无效的宽高比：{aspect_ratio}")
         if size not in ["720P", "1080P"]:

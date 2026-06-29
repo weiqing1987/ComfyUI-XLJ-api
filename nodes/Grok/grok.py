@@ -24,9 +24,9 @@ class XLJGrokCreateVideo:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model": (["grok-video-3", "grok-video-3-10s"], {
-                    "default": "grok-video-3",
-                    "tooltip": "选择模型：grok-video-3（标准版）或 grok-video-3-10s（10 秒版）"
+                "model": (["grok-imagine-video", "grok-imagine-video-1.5-preview"], {
+                    "default": "grok-imagine-video",
+                    "tooltip": "选择模型：grok-imagine-video（标准版）或 grok-imagine-video-1.5-preview（预览版）"
                 }),
                 "aspect_ratio": (["9:16", "16:9", "1:1", "2:3", "3:2"], {
                     "default": "16:9",
@@ -363,9 +363,9 @@ class XLJGrokCreateAndWait:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model": (["grok-video-3", "grok-video-3-10s"], {
-                    "default": "grok-video-3",
-                    "tooltip": "选择模型：grok-video-3（标准版）或 grok-video-3-10s（10 秒版）"
+                "model": (["grok-imagine-video", "grok-imagine-video-1.5-preview"], {
+                    "default": "grok-imagine-video",
+                    "tooltip": "选择模型：grok-imagine-video（标准版）或 grok-imagine-video-1.5-preview（预览版）"
                 }),
                 "aspect_ratio": (["9:16", "16:9", "1:1", "2:3", "3:2"], {
                     "default": "16:9",

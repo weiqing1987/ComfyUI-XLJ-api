@@ -122,8 +122,8 @@ XLJ_API_KEY=your_api_key_here
 
 ### Grok
 
-- `grok-video-3`
-- `grok-video-3-10s`
+- `grok-imagine-video`
+- `grok-imagine-video-1.5-preview`
 
 ### Veo3
 
