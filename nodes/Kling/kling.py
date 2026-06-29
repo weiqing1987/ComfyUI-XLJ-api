@@ -24,9 +24,9 @@ class XLJKlingCreateVideo:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model_name": (["kling-v1"], {
-                    "default": "kling-v1",
-                    "tooltip": "选择模型"
+                "model_name": (["kling-v3", "kling-v1"], {
+                    "default": "kling-v3",
+                    "tooltip": "选择模型（kling-v3 最强推荐，kling-v1 兼容旧版）"
                 }),
                 "aspect_ratio": (["16:9", "9:16", "1:1"], {
                     "default": "16:9",
@@ -404,9 +404,9 @@ class XLJKlingCreateAndWait:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model_name": (["kling-v1"], {
-                    "default": "kling-v1",
-                    "tooltip": "选择模型"
+                "model_name": (["kling-v3", "kling-v1"], {
+                    "default": "kling-v3",
+                    "tooltip": "选择模型（kling-v3 最强推荐，kling-v1 兼容旧版）"
                 }),
                 "aspect_ratio": (["16:9", "9:16", "1:1"], {
                     "default": "16:9",
