@@ -7,9 +7,170 @@ import time
 import requests
 from ..xlj_utils import env_or, http_headers_json, API_BASE
 
-# 禁用代理
 session = requests.Session()
 session.trust_env = False
+
+# 模型配置：显示名 → {API内部模型名, 端点路径格式, 时长上限}
+MODEL_CONFIG = {
+    "kling-v3": {
+        "model_key": "kling-3.0-turbo",
+        "t2v_endpoint": "/kling/text-to-video/kling-3.0-turbo",
+        "i2v_endpoint": "/kling/image-to-video/kling-3.0-turbo",
+        "use_old_api": False,      # 新格式：模型名在URL路径中
+        "max_duration": 10,
+    },
+    "kling-v2-5-turbo(最高10s)": {
+        "model_key": "kling-v2-5-turbo",
+        "t2v_endpoint": "/kling/v1/videos/text2video",
+        "i2v_endpoint": "/kling/v1/videos/image2video",
+        "use_old_api": True,       # 旧格式：model_name 参数
+        "max_duration": 10,
+    },
+    "kling-v1": {
+        "model_key": "kling-v1",
+        "t2v_endpoint": "/kling/v1/videos/text2video",
+        "i2v_endpoint": "/kling/v1/videos/image2video",
+        "use_old_api": True,
+        "max_duration": 10,
+    },
+}
+
+
+def _build_endpoint(api_base, model_display, mode_text):
+    """根据模型和模式构建正确的端点和 payload"""
+    cfg = MODEL_CONFIG.get(model_display)
+    if not cfg:
+        raise RuntimeError(f"未知模型：{model_display}")
+
+    is_image = mode_text in ("图生视频", "首尾帧")
+    if is_image:
+        if not cfg["i2v_endpoint"]:
+            raise RuntimeError(f"{model_display} 不支持图生视频")
+        endpoint = f"{api_base}{cfg['i2v_endpoint']}"
+    else:
+        endpoint = f"{api_base}{cfg['t2v_endpoint']}"
+
+    return endpoint, cfg, is_image
+
+
+def _build_payload(cfg, is_image, prompt, aspect_ratio, duration,
+                   negative_prompt, cfg_scale, sound, mode_type,
+                   image_1="", image_2="", mode_text=""):
+    """构建请求 payload"""
+    if cfg["use_old_api"]:
+        # 旧格式：/kling/v1/videos/{action} + model_name 参数
+        payload = {
+            "model_name": cfg["model_key"],
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "cfg_scale": cfg_scale,
+            "mode": mode_type,
+            "aspect_ratio": aspect_ratio,
+            "duration": str(duration),
+            "sound": sound,
+        }
+        if is_image:
+            payload["image"] = image_1.strip()
+            if mode_text == "首尾帧":
+                payload["image_tail"] = image_2.strip()
+    else:
+        # 新格式：/kling/{action}/{model}，模型在URL路径中
+        payload = {
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+            "duration": str(duration),
+        }
+        if negative_prompt:
+            payload["negative_prompt"] = negative_prompt
+        if is_image:
+            payload["image"] = image_1.strip()
+            if mode_text == "首尾帧":
+                payload["image_tail"] = image_2.strip()
+    return payload
+
+
+def _parse_create_response(response_text):
+    """解析创建响应"""
+    try:
+        result = json.loads(response_text)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Kling 响应解析失败：{str(e)}，内容：{response_text[:200]}")
+
+    code = result.get("code", -1)
+    if code != 0:
+        err_msg = result.get("message", f"错误码 {code}")
+        raise RuntimeError(f"Kling 创建失败：{err_msg}")
+
+    data = result.get("data", {})
+    task_id = data.get("task_id", "")
+    task_status = data.get("task_status", "submitted")
+    return task_id, task_status
+
+
+def _query_once(api_base, headers, task_id, video_type):
+    """单次查询任务状态，自动跟随 301 跳转"""
+    last_error = None
+    for attempt in range(1, 4):
+        try:
+            query_endpoint = f"{api_base}/kling/v1/videos/{video_type}/{task_id}"
+            resp = session.get(
+                query_endpoint,
+                headers=headers,
+                timeout=30,
+                allow_redirects=True,  # Kling 查询返回 301 需要跟随
+            )
+
+            response_text = resp.text
+
+            if resp.status_code >= 400:
+                try:
+                    err_data = json.loads(response_text)
+                    err_msg = err_data.get("message", str(err_data))
+                except:
+                    err_msg = f"HTTP {resp.status_code} - {response_text[:200]}"
+                raise RuntimeError(f"Kling 查询失败：{err_msg}")
+
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Kling 查询响应解析失败：{str(e)}")
+
+            code = result.get("code", -1)
+            if code != 0:
+                err_msg = result.get("message", f"错误码 {code}")
+                raise RuntimeError(f"Kling 查询失败：{err_msg}")
+
+            data = result.get("data", {})
+            status = data.get("task_status", "unknown")
+
+            # 提取视频 URL
+            video_url = ""
+            task_info = data.get("task_info", {})
+            if isinstance(task_info, dict):
+                video_url = task_info.get("video_url", "")
+            if not video_url:
+                video_url = data.get("video_url", "")
+            if not video_url:
+                videos = data.get("videos", [])
+                if isinstance(videos, list) and len(videos) > 0:
+                    video_url = videos[0].get("url", "")
+
+            if status == "succeed":
+                print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 完成响应：{json.dumps(result, ensure_ascii=False)[:500]}")
+
+            return status, video_url
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            last_error = e
+            if attempt < 3:
+                print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 网络重试 {attempt}/3：{str(e)}")
+                time.sleep(1)
+            else:
+                raise RuntimeError(f"Kling 查询失败：网络连接问题 - {str(e)}")
+        except Exception as e:
+            raise RuntimeError(f"Kling 查询失败：{str(e)}")
+
+    raise RuntimeError(f"Kling 查询失败：{str(last_error)}")
 
 
 class XLJKlingCreateVideo:
@@ -24,9 +185,9 @@ class XLJKlingCreateVideo:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model_name": (["kling-v3", "kling-v1"], {
+                "model": (list(MODEL_CONFIG.keys()), {
                     "default": "kling-v3",
-                    "tooltip": "选择模型（kling-v3 最强推荐，kling-v1 兼容旧版）"
+                    "tooltip": "选择模型（kling-v3 最强，v2-5-turbo 最高10秒）"
                 }),
                 "aspect_ratio": (["16:9", "9:16", "1:1"], {
                     "default": "16:9",
@@ -57,7 +218,7 @@ class XLJKlingCreateVideo:
                     "min": 5,
                     "max": 10,
                     "step": 5,
-                    "tooltip": "视频时长（秒），5 或 10"
+                    "tooltip": "视频时长（秒），v2-5-turbo 最高 10 秒"
                 }),
                 "negative_prompt": ("STRING", {
                     "default": "",
@@ -86,7 +247,7 @@ class XLJKlingCreateVideo:
     def INPUT_LABELS(cls):
         return {
             "prompt": "提示词",
-            "model_name": "模型",
+            "model": "模型",
             "aspect_ratio": "宽高比",
             "api_key": "API 密钥",
             "mode": "模式",
@@ -104,103 +265,57 @@ class XLJKlingCreateVideo:
     FUNCTION = "create"
     CATEGORY = "XLJ/Kling"
 
-    def create(self, prompt, model_name, aspect_ratio, api_key="",
+    def create(self, prompt, model, aspect_ratio, api_key="",
                mode="文生视频", image_1="", image_2="",
                duration=5, negative_prompt="", cfg_scale=0.5,
                sound="off", mode_type="std"):
-        """创建 Kling 视频生成任务"""
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
             raise RuntimeError("API Key 未配置，请在节点参数或环境变量中设置 XLJ_API_KEY")
 
         api_base = API_BASE
         headers = http_headers_json(api_key)
+        cfg = MODEL_CONFIG.get(model)
+        if not cfg:
+            raise RuntimeError(f"未知模型：{model}")
 
-        # 根据 mode 选择端点和构建 payload
         is_image = mode in ("图生视频", "首尾帧")
 
         if is_image:
             if not image_1 or not image_1.strip():
-                raise RuntimeError(f"{mode}模式需要提供 image_1（参考图）")
+                raise RuntimeError(f"{mode}需要提供 image_1（参考图）")
             if mode == "首尾帧" and (not image_2 or not image_2.strip()):
-                raise RuntimeError("首尾帧模式需要同时提供 image_1（首帧）和 image_2（尾帧）")
+                raise RuntimeError("首尾帧需要同时提供 image_1（首帧）和 image_2（尾帧）")
 
-            endpoint = f"{api_base}/kling/v1/videos/image2video"
-            payload = {
-                "model_name": model_name,
-                "image": image_1.strip(),
-                "prompt": prompt,
-                "negative_prompt": negative_prompt,
-                "cfg_scale": cfg_scale,
-                "mode": mode_type,
-                "aspect_ratio": aspect_ratio,
-                "duration": str(duration),
-                "sound": sound,
-            }
-            if mode == "首尾帧":
-                payload["image_tail"] = image_2.strip()
+        endpoint, _, _ = _build_endpoint(api_base, model, mode)
+        payload = _build_payload(cfg, is_image, prompt, aspect_ratio, duration,
+                                 negative_prompt, cfg_scale, sound, mode_type,
+                                 image_1, image_2, mode)
 
-            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - {mode}：图生视频端点")
-        else:
-            endpoint = f"{api_base}/kling/v1/videos/text2video"
-            payload = {
-                "model_name": model_name,
-                "prompt": prompt,
-                "negative_prompt": negative_prompt,
-                "cfg_scale": cfg_scale,
-                "mode": mode_type,
-                "aspect_ratio": aspect_ratio,
-                "duration": str(duration),
-                "sound": sound,
-            }
-            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - {mode}：文生视频端点")
-
-        print(f"[ComfyUI-XLJ-api] 信陵君 Kling 创建视频任务：{prompt[:50]}...")
-        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 模型：{model_name}, 时长：{duration}秒")
+        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - {mode} 创建任务")
+        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 模型：{model}, 时长：{duration}秒")
+        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 端点：{endpoint}")
 
         try:
-            resp = session.post(
-                endpoint,
-                json=payload,
-                headers=headers,
-                timeout=30
-            )
-
+            resp = session.post(endpoint, json=payload, headers=headers, timeout=30)
             response_text = resp.text
 
             if resp.status_code >= 400:
                 try:
                     err_data = json.loads(response_text)
-                    err_msg = err_data.get("message", str(err_data))
+                    err_msg = err_data.get("error", {}).get("message", err_data.get("message", str(err_data)))
                 except:
-                    err_msg = f"HTTP {resp.status_code} - 响应内容：{response_text[:200]}"
-                raise RuntimeError(f"Kling 视频创建失败：{err_msg}")
+                    err_msg = f"HTTP {resp.status_code} - {response_text[:200]}"
+                raise RuntimeError(f"Kling 创建失败：{err_msg}")
 
-            try:
-                result = json.loads(response_text)
-            except json.JSONDecodeError as e:
-                print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 原始响应：{response_text[:500]}")
-                raise RuntimeError(f"Kling 视频创建失败：无法解析响应为 JSON - {str(e)}")
-
-            # 解析 Kling 响应：{code, message, request_id, data: {task_id, task_status}}
-            code = result.get("code", -1)
-            if code != 0:
-                err_msg = result.get("message", f"错误码 {code}")
-                raise RuntimeError(f"Kling 视频创建失败：{err_msg}")
-
-            data = result.get("data", {})
-            task_id = data.get("task_id", "")
-            task_status = data.get("task_status", "submitted")
-
+            task_id, task_status = _parse_create_response(response_text)
             print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 任务已创建：{task_id}, 状态：{task_status}")
 
-            # 记录任务类型，供查询节点使用
             video_type = "image2video" if is_image else "text2video"
-
             return (task_id, task_status, video_type)
 
         except Exception as e:
-            raise RuntimeError(f"Kling 视频创建失败：{str(e)}")
+            raise RuntimeError(f"Kling 创建失败：{str(e)}")
 
 
 class XLJKlingQueryVideo:
@@ -222,7 +337,7 @@ class XLJKlingQueryVideo:
             "optional": {
                 "video_type": (["text2video", "image2video"], {
                     "default": "text2video",
-                    "tooltip": "任务类型（与创建节点输出类型一致）"
+                    "tooltip": "任务类型（与创建节点输出一致）"
                 }),
                 "wait": ("BOOLEAN", {
                     "default": True,
@@ -262,133 +377,50 @@ class XLJKlingQueryVideo:
 
     def query(self, task_id, api_key="", video_type="text2video",
               wait=True, poll_interval_sec=10, timeout_sec=1800):
-        """查询 Kling 视频生成任务状态"""
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
             raise RuntimeError("API Key 未配置，请在节点参数或环境变量中设置 XLJ_API_KEY")
-
         if not task_id:
             raise RuntimeError("任务 ID 不能为空")
 
         api_base = API_BASE
         headers = http_headers_json(api_key)
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 查询任务：{task_id}, 类型：{video_type}")
-        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 轮询间隔：{poll_interval_sec}秒，超时：{timeout_sec}秒")
+        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 查询任务：{task_id}")
 
-        def once():
-            """单次查询"""
-            last_error = None
-            for attempt in range(1, 4):
-                try:
-                    # Kling 查询端点不同：text2video vs image2video
-                    query_endpoint = f"{api_base}/kling/v1/videos/{video_type}/{task_id}"
-                    resp = session.get(
-                        query_endpoint,
-                        headers=headers,
-                        timeout=30
-                    )
-
-                    response_text = resp.text
-
-                    if resp.status_code >= 400:
-                        try:
-                            err_data = json.loads(response_text)
-                            err_msg = err_data.get("message", str(err_data))
-                        except:
-                            err_msg = f"HTTP {resp.status_code} - 响应内容：{response_text[:200]}"
-                        raise RuntimeError(f"Kling 视频查询失败：{err_msg}")
-
-                    try:
-                        result = json.loads(response_text)
-                    except json.JSONDecodeError as e:
-                        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 原始响应：{response_text[:500]}")
-                        raise RuntimeError(f"Kling 视频查询失败：无法解析响应为 JSON - {str(e)}")
-
-                    # Kling 响应格式：{code, message, data: {task_id, task_status, task_info: {video_url}}}
-                    code = result.get("code", -1)
-                    if code != 0 and code != 20000:
-                        err_msg = result.get("message", f"错误码 {code}")
-                        # task 不存在也算失败
-                        if code == 10002:
-                            raise RuntimeError(f"Kling 任务不存在：{task_id}")
-                        raise RuntimeError(f"Kling 视频查询失败：{err_msg}")
-
-                    data = result.get("data", result)  # some endpoints return data directly
-                    status = data.get("task_status", "unknown")
-                    task_info = data.get("task_info", {})
-
-                    # 提取视频 URL（可能在 task_info 或直接在 data）
-                    video_url = task_info.get("video_url", "")
-                    if not video_url:
-                        video_url = data.get("video_url", "")
-                    if not video_url:
-                        # 也可能在 videos/results 等字段
-                        videos = data.get("videos", [])
-                        if videos and isinstance(videos, list) and len(videos) > 0:
-                            video_url = videos[0].get("url", "")
-                    if not video_url:
-                        video_url = ""
-
-                    enhanced_prompt = ""
-
-                    if status == "succeed":
-                        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 任务完成响应：{json.dumps(result, ensure_ascii=False)[:500]}")
-
-                    return status, video_url, enhanced_prompt
-
-                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-                    last_error = e
-                    if attempt < 3:
-                        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 网络连接失败，{attempt}/3，1 秒后重试...: {str(e)}")
-                        time.sleep(1)
-                    else:
-                        raise RuntimeError(f"Kling 视频查询失败：网络连接问题 - {str(e)}")
-                except Exception as e:
-                    raise RuntimeError(f"Kling 视频查询失败：{str(e)}")
-            raise RuntimeError(f"Kling 视频查询失败：{str(last_error)}")
-
-        # 不等待模式：只查询一次
         if not wait:
-            status, video_url, enhanced_prompt = once()
-            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 任务状态：{status}")
+            status, video_url = _query_once(api_base, headers, task_id, video_type)
+            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 状态：{status}")
             if video_url:
                 print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 视频 URL: {video_url}")
-            return (task_id, status, video_url, enhanced_prompt)
+            return (task_id, status, video_url, "")
 
-        # 轮询模式：等待任务完成
         deadline = time.time() + int(timeout_sec)
         poll_count = 0
         last_status = ""
 
         while time.time() < deadline:
             poll_count += 1
-            status, video_url, enhanced_prompt = once()
+            status, video_url = _query_once(api_base, headers, task_id, video_type)
             last_status = status
 
-            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 第 {poll_count} 次查询：状态={status}")
+            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 第 {poll_count} 次查询：{status}")
             if video_url:
                 print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 视频 URL: {video_url}")
 
-            # 任务完成
             if status == "succeed":
                 print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 任务完成！")
-                if video_url:
-                    print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 视频 URL: {video_url}")
-                return (task_id, status, video_url or "", enhanced_prompt)
+                return (task_id, status, video_url or "", "")
 
-            # 任务失败
             if status == "failed":
                 raise RuntimeError(f"Kling 视频生成失败，任务 ID: {task_id}")
 
-            # 继续轮询
-            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 任务进行中... 已等待 {poll_count * poll_interval_sec}/{timeout_sec} 秒")
+            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 进行中... 已等待 {poll_count * poll_interval_sec}/{timeout_sec} 秒")
             time.sleep(int(poll_interval_sec))
 
-        # 超时
         raise RuntimeError(
             f"Kling 视频生成超时（等待了 {timeout_sec} 秒）。"
-            f"任务 ID: {task_id}，最后状态：{last_status}，可使用查询节点继续检查状态。"
+            f"任务 ID: {task_id}，最后状态：{last_status}"
         )
 
 
@@ -404,9 +436,9 @@ class XLJKlingCreateAndWait:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model_name": (["kling-v3", "kling-v1"], {
+                "model": (list(MODEL_CONFIG.keys()), {
                     "default": "kling-v3",
-                    "tooltip": "选择模型（kling-v3 最强推荐，kling-v1 兼容旧版）"
+                    "tooltip": "选择模型"
                 }),
                 "aspect_ratio": (["16:9", "9:16", "1:1"], {
                     "default": "16:9",
@@ -437,7 +469,7 @@ class XLJKlingCreateAndWait:
                     "min": 5,
                     "max": 10,
                     "step": 5,
-                    "tooltip": "视频时长（秒），5 或 10"
+                    "tooltip": "视频时长（秒），v2-5-turbo 最高 10 秒"
                 }),
                 "negative_prompt": ("STRING", {
                     "default": "",
@@ -478,7 +510,7 @@ class XLJKlingCreateAndWait:
     def INPUT_LABELS(cls):
         return {
             "prompt": "提示词",
-            "model_name": "模型",
+            "model": "模型",
             "aspect_ratio": "宽高比",
             "api_key": "API 密钥",
             "mode": "模式",
@@ -499,21 +531,20 @@ class XLJKlingCreateAndWait:
     CATEGORY = "XLJ/Kling"
     OUTPUT_NODE = True
 
-    def create_and_wait(self, prompt, model_name, aspect_ratio, api_key="",
+    def create_and_wait(self, prompt, model, aspect_ratio, api_key="",
                         mode="文生视频", image_1="", image_2="",
                         duration=5, negative_prompt="", cfg_scale=0.5,
                         sound="off", mode_type="std",
                         wait_timeout_sec=1800, poll_interval_sec=10):
-        """创建 Kling 视频并等待完成"""
         creator = XLJKlingCreateVideo()
         task_id, status, video_type = creator.create(
-            prompt, model_name, aspect_ratio, api_key,
+            prompt, model, aspect_ratio, api_key,
             mode, image_1, image_2,
             duration, negative_prompt, cfg_scale,
             sound, mode_type
         )
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 任务已创建：{task_id}，开始等待完成...")
+        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 等待任务完成：{task_id}")
 
         querier = XLJKlingQueryVideo()
         task_id, status, video_url, enhanced_prompt = querier.query(
@@ -525,7 +556,7 @@ class XLJKlingCreateAndWait:
             timeout_sec=wait_timeout_sec
         )
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 任务完成！状态：{status}")
+        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 完成！状态：{status}")
         if video_url:
             print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 视频 URL: {video_url}")
 

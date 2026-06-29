@@ -1,0 +1,187 @@
+{
+  "id": "kling-workflow-20260629",
+  "revision": 0,
+  "last_node_id": 10,
+  "last_link_id": 5,
+  "nodes": [
+    {
+      "id": 8,
+      "type": "Note",
+      "pos": [-600, 30],
+      "size": [500, 220],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {
+        "text": "Kling 视频生成（文生视频示例）\n━━━━━━━━━━━━━━━━━━━━━━━━\n端点: POST /kling/text-to-video/kling-3.0-turbo\n模型选择：\n  kling-v3              → /kling/text-to-video/kling-3.0-turbo\n  kling-v2-5-turbo(最高10s) → /kling/v1/videos/text2video (model_name)\n  kling-v1              → /kling/v1/videos/text2video (model_name)\n\n提示：v2-5-turbo 和 v1 支持图生视频 /kling/v1/videos/image2video"
+      }
+    },
+    {
+      "id": 1,
+      "type": "ttN text",
+      "pos": [-590, 280],
+      "size": [400, 180],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "text",
+          "name": "text",
+          "type": "STRING",
+          "widget": { "name": "text" },
+          "link": null
+        }
+      ],
+      "outputs": [
+        { "name": "text", "type": "STRING", "links": [1] }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_tinyterranodes",
+        "Node name for S&R": "ttN text",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "A cinematic drone shot flying over a misty mountain forest at sunrise, golden light piercing through clouds",
+        [false, true]
+      ]
+    },
+    {
+      "id": 3,
+      "type": "XLJKlingCreateVideo",
+      "pos": [-90, 120],
+      "size": [400, 480],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": { "name": "prompt" },
+          "link": 1
+        }
+      ],
+      "outputs": [
+        { "name": "任务 ID", "type": "STRING", "links": [2] },
+        { "name": "状态", "type": "STRING", "links": null },
+        { "name": "任务类型", "type": "STRING", "links": [4] }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJKlingCreateVideo",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "",
+        "kling-v3",
+        "16:9",
+        "",
+        "文生视频",
+        "",
+        "",
+        5,
+        "",
+        0.5,
+        "off",
+        "std"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "XLJKlingQueryVideo",
+      "pos": [400, 120],
+      "size": [290, 240],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "widget": { "name": "task_id" },
+          "link": 2
+        },
+        {
+          "name": "video_type",
+          "type": "STRING",
+          "widget": { "name": "video_type" },
+          "link": 4
+        }
+      ],
+      "outputs": [
+        { "name": "任务 ID", "type": "STRING", "links": null },
+        { "name": "状态", "type": "STRING", "links": null },
+        { "name": "视频 URL", "type": "STRING", "links": [3] },
+        { "name": "增强提示词", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJKlingQueryVideo",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": [
+        "",
+        "",
+        "text2video",
+        true,
+        10,
+        1800
+      ]
+    },
+    {
+      "id": 5,
+      "type": "XLJDownloadVideo",
+      "pos": [800, 120],
+      "size": [270, 150],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "widget": { "name": "video_url" },
+          "link": 3
+        }
+      ],
+      "outputs": [
+        { "name": "local_path", "type": "STRING", "links": null },
+        { "name": "status", "type": "STRING", "links": null }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJDownloadVideo",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": ["", "output/xlj_video", "kling_video", 180]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 3, 0, "STRING"],
+    [2, 3, 0, 4, 0, "STRING"],
+    [3, 4, 2, 5, 0, "STRING"],
+    [4, 3, 2, 4, 4, "STRING"]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Kling 视频生成",
+      "bounding": [-720, 10, 1500, 700],
+      "color": "#8b5cf6",
+      "font_size": 24
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.8,
+      "offset": [200, 100]
+    },
+    "workflowRendererVersion": "LG",
+    "frontendVersion": "1.37.11",
+    "ue_links": [],
+    "links_added_by_ue": []
+  },
+  "version": 0.4
+}
