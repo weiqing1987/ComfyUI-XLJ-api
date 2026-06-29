@@ -24,7 +24,7 @@ class XLJViduQCreateVideo:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model": (["viduq2", "viduq2-pro", "viduq2-turbo", "viduq3-pro"], {
+                "model": (["viduq2", "viduq2-pro", "viduq2-turbo", "viduq3-pro", "viduq3-turbo"], {
                     "default": "viduq2",
                     "tooltip": "选择模型"
                 }),
@@ -46,7 +46,7 @@ class XLJViduQCreateVideo:
                 "image_2": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "参考图片 2 URL（尾帧）"
+                    "tooltip": "参考图片 2 URL（尾帧，仅 viduq3-turbo 支持首位帧）"
                 }),
                 "image_urls": ("STRING", {
                     "default": "",
@@ -55,9 +55,9 @@ class XLJViduQCreateVideo:
                 }),
                 "duration": ("INT", {
                     "default": 5,
-                    "min": 5,
+                    "min": 1,
                     "max": 15,
-                    "tooltip": "视频时长（秒）"
+                    "tooltip": "视频时长（秒），viduq3-turbo 支持最短 1 秒"
                 }),
                 "negative_prompt": ("STRING", {
                     "default": "",
@@ -69,6 +69,10 @@ class XLJViduQCreateVideo:
                     "min": 0,
                     "max": 2147483647,
                     "tooltip": "随机种子（0 为随机）"
+                }),
+                "mode": (["文生视频", "图生视频", "首尾帧"], {
+                    "default": "文生视频",
+                    "tooltip": "viduq3-turbo 模式：文生视频无需图片，图生视频需1张参考图，首尾帧需2张参考图"
                 }),
             }
         }
@@ -86,6 +90,7 @@ class XLJViduQCreateVideo:
             "duration": "时长",
             "negative_prompt": "负面提示词",
             "seed": "随机种子",
+            "mode": "模式",
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING")
@@ -95,7 +100,7 @@ class XLJViduQCreateVideo:
 
     def create(self, prompt, model, aspect_ratio, api_key="",
                image_1="", image_2="", image_urls="",
-               duration=5, negative_prompt="", seed=0):
+               duration=5, negative_prompt="", seed=0, mode="文生视频"):
         """创建 ViduQ 视频生成任务"""
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
@@ -115,6 +120,8 @@ class XLJViduQCreateVideo:
             batch_images = ensure_list_from_urls(image_urls)
             images.extend(batch_images)
 
+        is_viduq3 = model == "viduq3-turbo"
+
         payload = {
             "model": model,
             "prompt": prompt,
@@ -122,22 +129,49 @@ class XLJViduQCreateVideo:
             "duration": duration,
         }
 
-        if images:
-            payload["images"] = images
+        if is_viduq3:
+            # viduq3-turbo 根据 mode 选择端点
+            if mode == "首尾帧":
+                if not image_1 or not image_1.strip():
+                    raise RuntimeError("首尾帧模式需要提供 image_1（首帧）和 image_2（尾帧）")
+                if not image_2 or not image_2.strip():
+                    raise RuntimeError("首尾帧模式需要提供 image_2（尾帧）")
+                endpoint = f"{api_base}/ent/v2/start-end2video"
+                payload["start_frame"] = image_1.strip()
+                payload["end_frame"] = image_2.strip()
+                print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 首尾帧模式")
+            elif mode == "图生视频":
+                if not image_1 or not image_1.strip():
+                    raise RuntimeError("图生视频模式需要提供 image_1（参考图）")
+                endpoint = f"{api_base}/ent/v2/img2video"
+                payload["images"] = [image_1.strip()]
+                print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 图生视频模式")
+            else:
+                # 文生视频
+                endpoint = f"{api_base}/ent/v2/text2video"
+                print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 文生视频模式")
 
-        if negative_prompt and negative_prompt.strip():
-            payload["negative_prompt"] = negative_prompt.strip()
-
-        if seed > 0:
-            payload["seed"] = seed
+            if negative_prompt and negative_prompt.strip():
+                payload["negative_prompt"] = negative_prompt.strip()
+            if seed > 0:
+                payload["seed"] = seed
+        else:
+            endpoint = f"{api_base}/v1/video/create"
+            if images:
+                payload["images"] = images
+            if negative_prompt and negative_prompt.strip():
+                payload["negative_prompt"] = negative_prompt.strip()
+            if seed > 0:
+                payload["seed"] = seed
 
         print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ 创建视频任务：{prompt[:50]}...")
         print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 模型：{model}, 时长：{duration}秒")
-        print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 参考图片数量：{len(images)}")
+        if images:
+            print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 参考图片数量：{len(images)}")
 
         try:
             resp = session.post(
-                f"{api_base}/v1/video/create",
+                endpoint,
                 json=payload,
                 headers=headers,
                 timeout=30
@@ -159,8 +193,13 @@ class XLJViduQCreateVideo:
                 print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 原始响应：{response_text[:500]}")
                 raise RuntimeError(f"ViduQ 视频创建失败：无法解析响应为 JSON - {str(e)}，响应内容：{response_text[:200]}")
 
-            task_id = result.get("id", "")
-            status = result.get("status", "pending")
+            # viduq3-turbo 响应包含 task_id 和 state，其他模型使用 id 和 status
+            if is_viduq3:
+                task_id = result.get("task_id", "")
+                status = result.get("state", "pending")
+            else:
+                task_id = result.get("id", "")
+                status = result.get("status", "pending")
             enhanced_prompt = result.get("enhanced_prompt", "")
 
             print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 任务已创建：{task_id}, 状态：{status}")
@@ -272,9 +311,30 @@ class XLJViduQQueryVideo:
                         print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 原始响应：{response_text[:500]}")
                         raise RuntimeError(f"ViduQ 视频查询失败：无法解析响应为 JSON - {str(e)}")
 
-                    status = result.get("status", "unknown")
-                    video_url = result.get("video_url") or ""
+                    # 兼容 viduq3-turbo（state 字段）和其他模型（status 字段）
+                    status = result.get("status") or result.get("state") or "unknown"
+
+                    # Vidu API 返回格式可能不同：
+                    #   格式1: {"video_url": "..."}
+                    #   格式2: {"creations": [{"url": "..."}]}
+                    #   格式3: {"output": {"video_url": "..."}}
+                    video_url = result.get("video_url")
+                    if not video_url:
+                        creations = result.get("creations")
+                        if creations and isinstance(creations, list) and len(creations) > 0:
+                            video_url = creations[0].get("url", "")
+                    if not video_url:
+                        output = result.get("output")
+                        if isinstance(output, dict):
+                            video_url = output.get("video_url", "")
+                    if not video_url:
+                        video_url = ""
+
                     enhanced_prompt = result.get("enhanced_prompt", "")
+
+                    # 调试日志：打印 viduq3-turbo 完整响应
+                    if status == "success" or status == "completed":
+                        print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 任务完成响应：{json.dumps(result, ensure_ascii=False)[:500]}")
 
                     return status, video_url, enhanced_prompt
 
@@ -311,10 +371,12 @@ class XLJViduQQueryVideo:
             if video_url:
                 print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 视频 URL: {video_url}")
 
-            # 任务完成且有 URL，返回结果
-            if status == "completed" and video_url:
+            # 任务完成
+            if status == "success":
                 print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 任务完成！")
-                return (task_id, status, video_url, enhanced_prompt)
+                if video_url:
+                    print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 视频 URL: {video_url}")
+                return (task_id, status, video_url or "", enhanced_prompt)
 
             # 任务失败
             if status == "failed":
@@ -343,7 +405,7 @@ class XLJViduQCreateAndWait:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model": (["viduq2", "viduq2-pro", "viduq2-turbo", "viduq3-pro"], {
+                "model": (["viduq2", "viduq2-pro", "viduq2-turbo", "viduq3-pro", "viduq3-turbo"], {
                     "default": "viduq2",
                     "tooltip": "选择模型"
                 }),
@@ -365,7 +427,7 @@ class XLJViduQCreateAndWait:
                 "image_2": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "参考图片 2 URL（尾帧）"
+                    "tooltip": "参考图片 2 URL（尾帧，仅 viduq3-turbo 支持首位帧）"
                 }),
                 "image_urls": ("STRING", {
                     "default": "",
@@ -374,9 +436,9 @@ class XLJViduQCreateAndWait:
                 }),
                 "duration": ("INT", {
                     "default": 5,
-                    "min": 5,
+                    "min": 1,
                     "max": 15,
-                    "tooltip": "视频时长（秒）"
+                    "tooltip": "视频时长（秒），viduq3-turbo 支持最短 1 秒"
                 }),
                 "negative_prompt": ("STRING", {
                     "default": "",
@@ -388,6 +450,10 @@ class XLJViduQCreateAndWait:
                     "min": 0,
                     "max": 2147483647,
                     "tooltip": "随机种子（0 为随机）"
+                }),
+                "mode": (["文生视频", "图生视频", "首尾帧"], {
+                    "default": "文生视频",
+                    "tooltip": "viduq3-turbo 模式：文生视频无需图片，图生视频需1张参考图，首尾帧需2张参考图"
                 }),
                 "wait_timeout_sec": ("INT", {
                     "default": 1800,
@@ -417,6 +483,7 @@ class XLJViduQCreateAndWait:
             "duration": "时长",
             "negative_prompt": "负面提示词",
             "seed": "随机种子",
+            "mode": "模式",
             "wait_timeout_sec": "等待超时",
             "poll_interval_sec": "轮询间隔",
         }
@@ -429,14 +496,14 @@ class XLJViduQCreateAndWait:
 
     def create_and_wait(self, prompt, model, aspect_ratio, api_key="",
                        image_1="", image_2="", image_urls="",
-                       duration=5, negative_prompt="", seed=0,
+                       duration=5, negative_prompt="", seed=0, mode="文生视频",
                        wait_timeout_sec=1800, poll_interval_sec=10):
         """创建 ViduQ 视频并等待完成"""
         creator = XLJViduQCreateVideo()
         task_id, status, enhanced_prompt = creator.create(
             prompt, model, aspect_ratio, api_key,
             image_1, image_2, image_urls,
-            duration, negative_prompt, seed
+            duration, negative_prompt, seed, mode
         )
 
         print(f"[ComfyUI-XLJ-api] 信陵君 ViduQ - 任务已创建：{task_id}，开始等待完成...")

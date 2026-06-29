@@ -112,7 +112,7 @@
       },
       "widgets_values": [
         "",
-        "sk-padFygjoB8Ao3By0u3Oxd3l39BiYcbZBa6DcL9ltqxaxcSEv",
+        """",
         "gemini-2.5-pro",
         "detailed",
         "",
@@ -229,7 +229,7 @@
         "16:9",
         "1080p",
         "5",
-        "sk-NVDeDPs1TIr8P3jOvHplbfi4F4mvC7Wf3TlPj9WjYbZAiCbI",
+        """",
         "https://xinlingjunai.cn",
         "",
         "",
@@ -295,7 +295,7 @@
       },
       "widgets_values": [
         "",
-        "sk-NVDeDPs1TIr8P3jOvHplbfi4F4mvC7Wf3TlPj9WjYbZAiCbI",
+        """",
         "https://xinlingjunai.cn",
         true,
         10,

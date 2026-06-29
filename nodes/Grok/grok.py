@@ -183,14 +183,14 @@ class XLJGrokCreateVideo:
         }
 
         # grok-imagine-video-1.5-preview 强制图生视频，image 参数需为 xaiMediaRef 对象
-        # grok-imagine-video 可选图生视频，images 参数为 URL 字符串数组
+        # grok-imagine-video 可选图生视频，reference_images 为对象数组
         if model == "grok-imagine-video-1.5-preview":
             if not images:
                 raise RuntimeError("grok-imagine-video-1.5-preview 模型必须提供参考图片")
             payload["image"] = {"url": images[0]}
         else:
             if images:
-                payload["images"] = images
+                payload["reference_images"] = [{"url": img} for img in images]
 
         # 可选参数
         if motion_mode:
