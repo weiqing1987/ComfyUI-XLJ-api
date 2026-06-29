@@ -32,9 +32,13 @@ class XLJGrokCreateVideo:
                     "default": "16:9",
                     "tooltip": "视频宽高比"
                 }),
-                "size": (["720P", "1080P"], {
-                    "default": "1080P",
+                "resolution": (["360p", "540p", "720p", "1080p"], {
+                    "default": "1080p",
                     "tooltip": "视频分辨率"
+                }),
+                "duration": (["5", "8"], {
+                    "default": "5",
+                    "tooltip": "视频时长（秒），grok-imagine-video 固定为 5 秒"
                 }),
                 "api_key": ("STRING", {
                     "default": "",
@@ -92,6 +96,26 @@ class XLJGrokCreateVideo:
                     "multiline": True,
                     "tooltip": "参考图片 URL 批量输入（多个用逗号、分号或换行分隔）"
                 }),
+                "motion_mode": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "运动模式（可选，如 normal/fast/slow）"
+                }),
+                "style": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "视频风格（可选，如 cinematic/anime/realistic）"
+                }),
+                "sound_effect_switch": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "是否启用音效"
+                }),
+                "seed": ("INT", {
+                    "default": 0,
+                    "min": 0,
+                    "max": 2147483647,
+                    "tooltip": "随机种子（0 表示随机）"
+                }),
             }
         }
 
@@ -101,7 +125,8 @@ class XLJGrokCreateVideo:
             "prompt": "提示词",
             "model": "模型",
             "aspect_ratio": "宽高比",
-            "size": "分辨率",
+            "resolution": "分辨率",
+            "duration": "时长",
             "api_key": "API 密钥",
             "api_base": "API 地址",
             "image_1": "参考图片 1",
@@ -112,7 +137,11 @@ class XLJGrokCreateVideo:
             "image_6": "参考图片 6",
             "image_7": "参考图片 7",
             "image_8": "参考图片 8",
-            "image_urls": "参考图片 URL 批量"
+            "image_urls": "参考图片 URL 批量",
+            "motion_mode": "运动模式",
+            "style": "风格",
+            "sound_effect_switch": "音效",
+            "seed": "种子",
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING")
@@ -120,10 +149,10 @@ class XLJGrokCreateVideo:
     FUNCTION = "create"
     CATEGORY = "XLJ/Grok"
 
-    def create(self, prompt, model, aspect_ratio, size, api_key="", api_base="",
+    def create(self, prompt, model, aspect_ratio, resolution, duration="5", api_key="", api_base="",
                image_1="", image_2="", image_3="", image_4="",
                image_5="", image_6="", image_7="", image_8="",
-               image_urls=""):
+               image_urls="", motion_mode="", style="", sound_effect_switch=False, seed=0):
         """创建 Grok 视频生成任务"""
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
@@ -142,21 +171,47 @@ class XLJGrokCreateVideo:
             batch_images = ensure_list_from_urls(image_urls)
             images.extend(batch_images)
 
+        # 统一使用 /v1/videos/generations
+        endpoint = f"{api_base}/v1/videos/generations"
+
         payload = {
             "model": model,
             "prompt": prompt,
             "aspect_ratio": aspect_ratio,
-            "size": size,
-            "images": images
+            "resolution": resolution,
+            "duration": int(duration),
         }
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 Grok 创建视频任务：{prompt[:50]}...")
+        # grok-imagine-video-1.5-preview 强制图生视频，image 参数需为 xaiMediaRef 对象
+        # grok-imagine-video 可选图生视频，images 参数为 URL 字符串数组
+        if model == "grok-imagine-video-1.5-preview":
+            if not images:
+                raise RuntimeError("grok-imagine-video-1.5-preview 模型必须提供参考图片")
+            payload["image"] = {"url": images[0]}
+        else:
+            if images:
+                payload["images"] = images
+
+        # 可选参数
+        if motion_mode:
+            payload["motionMode"] = motion_mode
+        if style:
+            payload["style"] = style
+        if sound_effect_switch:
+            payload["soundEffectSwitch"] = True
+        if seed > 0:
+            payload["seed"] = seed
+
+        print(f"[ComfyUI-XLJ-api] 信陵君 Grok 创建视频：{prompt[:50]}...")
         print(f"[ComfyUI-XLJ-api] 信陵君 API Base: {api_base}")
-        print(f"[ComfyUI-XLJ-api] 信陵君 Grok 参考图片数量：{len(images)}")
+        print(f"[ComfyUI-XLJ-api] 信陵君 模型：{model}, 分辨率：{resolution}, 时长：{duration}s")
+        if images:
+            print(f"[ComfyUI-XLJ-api] 信陵君 参考图片数量：{len(images)}")
+        print(f"[ComfyUI-XLJ-api] 信陵君 端点：/v1/videos/generations")
 
         try:
             resp = session.post(
-                f"{api_base}/v1/video/create",
+                endpoint,
                 json=payload,
                 headers=headers,
                 timeout=30
@@ -178,9 +233,13 @@ class XLJGrokCreateVideo:
                 print(f"[ComfyUI-XLJ-api] 原始响应：{response_text[:500]}")
                 raise RuntimeError(f"Grok 视频创建失败：无法解析响应为 JSON - {str(e)}，响应内容：{response_text[:200]}")
 
-            task_id = result.get("id", "")
+            # 新 API 返回 request_id（兼容旧格式的 id）
+            task_id = result.get("request_id") or result.get("id") or ""
             status = result.get("status", "pending")
             enhanced_prompt = result.get("enhanced_prompt", "")
+
+            if not task_id:
+                raise RuntimeError(f"创建响应缺少任务 ID: {json.dumps(result, ensure_ascii=False)}")
 
             print(f"[ComfyUI-XLJ-api] 信陵君 Grok 任务已创建：{task_id}, 状态：{status}")
 
@@ -238,7 +297,7 @@ class XLJGrokQueryVideo:
             "api_base": "API 地址",
             "wait": "等待完成",
             "poll_interval_sec": "轮询间隔",
-            "timeout_sec": "总超时"
+            "timeout_sec": "总超时",
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING")
@@ -270,8 +329,7 @@ class XLJGrokQueryVideo:
             for attempt in range(1, 4):
                 try:
                     resp = session.get(
-                        f"{api_base}/v1/video/query",
-                        params={"id": task_id},
+                        f"{api_base}/v1/videos/{task_id}",
                         headers=headers,
                         timeout=30
                     )
@@ -292,8 +350,26 @@ class XLJGrokQueryVideo:
                         print(f"[ComfyUI-XLJ-api] 原始响应：{response_text[:500]}")
                         raise RuntimeError(f"Grok 视频查询失败：无法解析响应为 JSON - {str(e)}")
 
-                    status = result.get("status", "unknown")
-                    video_url = result.get("video_url") or ""
+                    # 新 API 响应格式
+                    raw_status = result.get("status", "")
+                    # 状态映射：done -> completed
+                    if raw_status == "done":
+                        status = "completed"
+                    elif raw_status in ("pending", "in_progress", "running"):
+                        status = raw_status
+                    elif raw_status:
+                        status = raw_status
+                    else:
+                        # 只有 request_id，任务尚未注册到查询系统
+                        status = "pending"
+
+                    video_obj = result.get("video", {})
+                    video_url = ""
+                    if isinstance(video_obj, dict):
+                        video_url = video_obj.get("url", "")
+                    elif isinstance(video_obj, str):
+                        video_url = video_obj
+
                     enhanced_prompt = result.get("enhanced_prompt", "")
 
                     return status, video_url, enhanced_prompt
@@ -371,9 +447,13 @@ class XLJGrokCreateAndWait:
                     "default": "16:9",
                     "tooltip": "视频宽高比"
                 }),
-                "size": (["720P", "1080P"], {
-                    "default": "1080P",
+                "resolution": (["360p", "540p", "720p", "1080p"], {
+                    "default": "1080p",
                     "tooltip": "视频分辨率"
+                }),
+                "duration": (["5", "8"], {
+                    "default": "5",
+                    "tooltip": "视频时长（秒），grok-imagine-video 固定为 5 秒"
                 }),
                 "api_key": ("STRING", {
                     "default": "",
@@ -426,6 +506,26 @@ class XLJGrokCreateAndWait:
                     "multiline": True,
                     "tooltip": "参考图片 URL 批量输入（多个用逗号、分号或换行分隔）"
                 }),
+                "motion_mode": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "运动模式（可选，如 normal/fast/slow）"
+                }),
+                "style": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "视频风格（可选，如 cinematic/anime/realistic）"
+                }),
+                "sound_effect_switch": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "是否启用音效"
+                }),
+                "seed": ("INT", {
+                    "default": 0,
+                    "min": 0,
+                    "max": 2147483647,
+                    "tooltip": "随机种子（0 表示随机）"
+                }),
                 "wait_timeout_sec": ("INT", {
                     "default": 1800,
                     "min": 60,
@@ -447,7 +547,8 @@ class XLJGrokCreateAndWait:
             "prompt": "提示词",
             "model": "模型",
             "aspect_ratio": "宽高比",
-            "size": "分辨率",
+            "resolution": "分辨率",
+            "duration": "时长",
             "api_key": "API 密钥",
             "image_1": "参考图片 1",
             "image_2": "参考图片 2",
@@ -458,8 +559,12 @@ class XLJGrokCreateAndWait:
             "image_7": "参考图片 7",
             "image_8": "参考图片 8",
             "image_urls": "参考图片 URL 批量",
+            "motion_mode": "运动模式",
+            "style": "风格",
+            "sound_effect_switch": "音效",
+            "seed": "种子",
             "wait_timeout_sec": "等待超时",
-            "poll_interval_sec": "轮询间隔"
+            "poll_interval_sec": "轮询间隔",
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING")
@@ -468,18 +573,21 @@ class XLJGrokCreateAndWait:
     CATEGORY = "XLJ/Grok"
     OUTPUT_NODE = True
 
-    def create_and_wait(self, prompt, model, aspect_ratio, size, api_key="",
-                       image_1="", image_2="", image_3="", image_4="",
-                       image_5="", image_6="", image_7="", image_8="",
-                       image_urls="",
-                       wait_timeout_sec=1800, poll_interval_sec=10):
+    def create_and_wait(self, prompt, model, aspect_ratio, resolution, duration="5", api_key="",
+                        image_1="", image_2="", image_3="", image_4="",
+                        image_5="", image_6="", image_7="", image_8="",
+                        image_urls="", motion_mode="", style="", sound_effect_switch=False, seed=0,
+                        wait_timeout_sec=1800, poll_interval_sec=10):
         """创建 Grok 视频并等待完成"""
         creator = XLJGrokCreateVideo()
         task_id, status, enhanced_prompt = creator.create(
-            prompt, model, aspect_ratio, size, api_key,
-            image_1, image_2, image_3, image_4,
-            image_5, image_6, image_7, image_8,
-            image_urls
+            prompt=prompt, model=model, aspect_ratio=aspect_ratio,
+            resolution=resolution, duration=duration, api_key=api_key,
+            image_1=image_1, image_2=image_2, image_3=image_3, image_4=image_4,
+            image_5=image_5, image_6=image_6, image_7=image_7, image_8=image_8,
+            image_urls=image_urls,
+            motion_mode=motion_mode, style=style,
+            sound_effect_switch=sound_effect_switch, seed=seed
         )
 
         print(f"[ComfyUI-XLJ-api] 信陵君 Grok 任务已创建：{task_id}，开始等待完成...")

@@ -227,7 +227,8 @@
         "",
         "grok-imagine-video",
         "16:9",
-        "1080P",
+        "1080p",
+        "5",
         "sk-NVDeDPs1TIr8P3jOvHplbfi4F4mvC7Wf3TlPj9WjYbZAiCbI",
         "https://xinlingjunai.cn",
         "",
@@ -239,6 +240,10 @@
         "",
         "",
         "",
+        "",
+        "",
+        false,
+        0,
         [false, true],
         [false, true]
       ]

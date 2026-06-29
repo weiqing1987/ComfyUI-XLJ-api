@@ -109,10 +109,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 ## API 端点
 
 ```
-POST /v1/video/create     # 创建视频任务
-GET  /v1/video/query      # 查询任务状态
-POST /v1/upload           # 上传图片
-POST /v1/images/generate  # Banana 图像生成
+POST /v1/videos/generations  # Grok 创建视频（文生视频）
+POST /v1/videos/edits        # Grok 创建视频（图生视频）
+GET  /v1/video/query         # 查询任务状态
+POST /v1/video/create        # Veo3/Sora2/ViduQ 创建视频
+POST /v1/upload              # 上传图片
+POST /v1/images/generate     # Banana 图像生成
 POST /v1/images/generations  # Seedream 图像生成
 POST /v1/chat/completions    # GPT 文本处理
 ```

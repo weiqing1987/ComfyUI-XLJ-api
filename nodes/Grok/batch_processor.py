@@ -155,7 +155,8 @@ class XLJGrokBatchProcessor:
 
         model = task.get("model", "grok-imagine-video").strip()
         aspect_ratio = task.get("aspect_ratio", "16:9").strip()
-        size = task.get("size", "1080P").strip()
+        resolution = task.get("resolution", "1080p").strip().lower()
+        duration = task.get("duration", "5").strip()
 
         images = []
         for j in range(1, 9):
@@ -169,25 +170,32 @@ class XLJGrokBatchProcessor:
             batch_images = ensure_list_from_urls(image_urls)
             images.extend(batch_images)
 
+        motion_mode = task.get("motion_mode", "").strip()
+        style = task.get("style", "").strip()
+        sound_effect = task.get("sound_effect_switch", "").strip() in ("true", "True", "1", "yes")
+        seed_str = task.get("seed", "0").strip()
+        seed = int(seed_str) if seed_str.isdigit() else 0
+
         output_prefix = task.get("output_prefix", f"task_{task_idx}").strip()
 
         if model not in ["grok-imagine-video", "grok-imagine-video-1.5-preview"]:
-            raise ValueError(f"无效的模型：{model}，必须是 grok-imagine-video 或 grok-imagine-video-1.5-preview")
+            raise ValueError(f"无效的模型：{model}")
         if aspect_ratio not in ["9:16", "16:9", "1:1", "2:3", "3:2"]:
             raise ValueError(f"无效的宽高比：{aspect_ratio}")
-        if size not in ["720P", "1080P"]:
-            raise ValueError(f"无效的分辨率：{size}，必须是 720P 或 1080P")
+        if resolution not in ["360p", "540p", "720p", "1080p"]:
+            raise ValueError(f"无效的分辨率：{resolution}，必须是 360p/540p/720p/1080p")
 
         print(f"  提示词：{prompt[:50]}...")
         print(f"  模型：{model}")
-        print(f"  宽高比：{aspect_ratio}, 分辨率：{size}")
+        print(f"  宽高比：{aspect_ratio}, 分辨率：{resolution}, 时长：{duration}s")
         print(f"  参考图片数量：{len(images)}")
 
         task_id, status, enhanced_prompt = self.creator.create(
             prompt=prompt,
             model=model,
             aspect_ratio=aspect_ratio,
-            size=size,
+            resolution=resolution,
+            duration=duration,
             api_key=api_key,
             image_1=task.get("image_1", ""),
             image_2=task.get("image_2", ""),
@@ -197,7 +205,11 @@ class XLJGrokBatchProcessor:
             image_6=task.get("image_6", ""),
             image_7=task.get("image_7", ""),
             image_8=task.get("image_8", ""),
-            image_urls=image_urls
+            image_urls=image_urls,
+            motion_mode=motion_mode,
+            style=style,
+            sound_effect_switch=sound_effect,
+            seed=seed
         )
 
         print(f"  任务 ID: {task_id}")
@@ -208,7 +220,8 @@ class XLJGrokBatchProcessor:
             "prompt": prompt,
             "model": model,
             "aspect_ratio": aspect_ratio,
-            "size": size,
+            "resolution": resolution,
+            "duration": duration,
             "images": images,
             "output_prefix": output_prefix,
             "status": status,
@@ -238,7 +251,9 @@ class XLJGrokBatchProcessor:
             elapsed += poll_interval
 
             try:
-                _, status, video_url, enhanced_prompt = self.querier.query(task_id, api_key)
+                _, status, video_url, enhanced_prompt = self.querier.query(
+                    task_id=task_id, api_key=api_key, wait=False
+                )
 
                 task_info["status"] = status
                 task_info["video_url"] = video_url
