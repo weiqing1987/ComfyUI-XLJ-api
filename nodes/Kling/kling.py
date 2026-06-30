@@ -79,7 +79,7 @@ def _build_payload(cfg, is_image, prompt, aspect_ratio, duration,
         payload = {
             "model_name": "kling-v1-6",
             "prompt": prompt,
-            "image_list": urls,
+            "image_list": [{"image": url} for url in urls],
             "cfg_scale": cfg_scale,
             "mode": mode_type,
             "aspect_ratio": aspect_ratio,
