@@ -1,4 +1,4 @@
-﻿"""Suno nodes for XLJ API."""
+"""Suno nodes for XLJ API."""
 
 from .suno import (
     XLJSunoCreateMusic,
