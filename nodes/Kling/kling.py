@@ -137,7 +137,7 @@ def _build_payload(cfg, is_image, prompt, aspect_ratio, duration,
 
 
 def _parse_create_response(response_text):
-    """解析创建响应"""
+    """解析创建响应，支持多字段获取 task_id"""
     try:
         result = json.loads(response_text)
     except json.JSONDecodeError as e:
@@ -149,8 +149,14 @@ def _parse_create_response(response_text):
         raise RuntimeError(f"Kling 创建失败：{err_msg}")
 
     data = result.get("data", {})
-    task_id = data.get("task_id", "")
-    task_status = data.get("task_status", "submitted")
+    if not data:
+        # 兼容 response 直接包含 task_id 的格式
+        task_id = result.get("task_id", result.get("id", ""))
+        task_status = result.get("task_status", result.get("status", "submitted"))
+    else:
+        # 尝试多种字段名
+        task_id = data.get("task_id") or data.get("id") or ""
+        task_status = data.get("task_status") or data.get("status") or "submitted"
     return task_id, task_status
 
 
@@ -379,7 +385,6 @@ class XLJKlingCreateVideo:
 
             task_id, task_status = _parse_create_response(response_text)
             print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 任务已创建：{task_id}, 状态：{task_status}")
-            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 原始响应：{response_text[:500]}")
 
             if is_multi_image:
                 video_type = "multi-image2video"
