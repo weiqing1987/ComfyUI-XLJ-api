@@ -1,0 +1,1422 @@
+{
+  "id": "kling-3modes-20260629",
+  "revision": 0,
+  "last_node_id": 16,
+  "last_link_id": 13,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Note",
+      "pos": [
+        -1400,
+        30
+      ],
+      "size": [
+        460,
+        160
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 2,
+      "properties": {
+        "text": "文生视频模式\n━━━━━━━━━━━━━━━━━━\n端点: 自动选择\n无需参考图\n模式参数选「文生视频」"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "ttN text",
+      "pos": [
+        -1390,
+        220
+      ],
+      "size": [
+        400,
+        180
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ttN text"
+      },
+      "widgets_values": [
+        "Cinematic drone shot over misty mountain forest at sunrise",
+        [
+          false,
+          true
+        ]
+      ]
+    },
+    {
+      "id": 3,
+      "type": "XLJKlingCreateVideo",
+      "pos": [
+        -1380,
+        440
+      ],
+      "size": [
+        400,
+        480
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 1
+        },
+        {
+          "name": "model",
+          "type": "COMBO",
+          "widget": {
+            "name": "model"
+          },
+          "link": null
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          },
+          "link": null
+        },
+        {
+          "name": "api_key",
+          "type": "STRING",
+          "widget": {
+            "name": "api_key"
+          },
+          "link": null
+        },
+        {
+          "name": "image_1",
+          "type": "STRING",
+          "widget": {
+            "name": "image_1"
+          },
+          "link": null
+        },
+        {
+          "name": "image_2",
+          "type": "STRING",
+          "widget": {
+            "name": "image_2"
+          },
+          "link": null
+        },
+        {
+          "name": "image_list",
+          "type": "STRING",
+          "widget": {
+            "name": "image_list"
+          },
+          "link": null
+        },
+        {
+          "name": "duration",
+          "type": "INT",
+          "widget": {
+            "name": "duration"
+          },
+          "link": null
+        },
+        {
+          "name": "negative_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "negative_prompt"
+          },
+          "link": null
+        },
+        {
+          "name": "cfg_scale",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg_scale"
+          },
+          "link": null
+        },
+        {
+          "name": "sound",
+          "type": "COMBO",
+          "widget": {
+            "name": "sound"
+          },
+          "link": null
+        },
+        {
+          "name": "mode_type",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode_type"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "任务 ID",
+          "type": "STRING",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "任务类型",
+          "type": "STRING",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJKlingCreateVideo"
+      },
+      "widgets_values": [
+        "",
+        "kling-v3",
+        "16:9",
+        "",
+        "文生视频",
+        "",
+        "",
+        "",
+        5,
+        "",
+        0.5,
+        "off",
+        "std"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "XLJKlingQueryVideo",
+      "pos": [
+        -1380,
+        980
+      ],
+      "size": [
+        290,
+        240
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "widget": {
+            "name": "task_id"
+          },
+          "link": 2
+        },
+        {
+          "name": "api_key",
+          "type": "STRING",
+          "widget": {
+            "name": "api_key"
+          },
+          "link": null
+        },
+        {
+          "name": "video_type",
+          "type": "STRING",
+          "widget": {
+            "name": "video_type"
+          },
+          "link": 3
+        },
+        {
+          "name": "wait",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "wait"
+          },
+          "link": null
+        },
+        {
+          "name": "poll_interval_sec",
+          "type": "INT",
+          "widget": {
+            "name": "poll_interval_sec"
+          },
+          "link": null
+        },
+        {
+          "name": "timeout_sec",
+          "type": "INT",
+          "widget": {
+            "name": "timeout_sec"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "任务 ID",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "视频 URL",
+          "type": "STRING",
+          "links": [
+            4
+          ]
+        },
+        {
+          "name": "增强提示词",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJKlingQueryVideo"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "text2video",
+        true,
+        10,
+        1800
+      ]
+    },
+    {
+      "id": 5,
+      "type": "XLJDownloadVideo",
+      "pos": [
+        -1340,
+        1280
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "widget": {
+            "name": "video_url"
+          },
+          "link": 4
+        },
+        {
+          "name": "save_dir",
+          "type": "STRING",
+          "widget": {
+            "name": "save_dir"
+          },
+          "link": null
+        },
+        {
+          "name": "filename",
+          "type": "STRING",
+          "widget": {
+            "name": "filename"
+          },
+          "link": null
+        },
+        {
+          "name": "timeout",
+          "type": "INT",
+          "widget": {
+            "name": "timeout"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "local_path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJDownloadVideo"
+      },
+      "widgets_values": [
+        "",
+        "output/xlj_video",
+        "kling_t2v",
+        180
+      ]
+    },
+    {
+      "id": 6,
+      "type": "Note",
+      "pos": [
+        -300,
+        30
+      ],
+      "size": [
+        460,
+        160
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "properties": {
+        "text": "图生视频模式\n━━━━━━━━━━━━━━━━━━\n需提供1张参考图\n模式参数选「图生视频」"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 7,
+      "type": "LoadImage",
+      "pos": [
+        -290,
+        220
+      ],
+      "size": [
+        560,
+        320
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        },
+        {
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": {
+            "name": "upload"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            5
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "",
+        "image"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "XLJUploadToImageHost",
+      "pos": [
+        370,
+        220
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 5
+        },
+        {
+          "name": "upload_url",
+          "type": "STRING",
+          "widget": {
+            "name": "upload_url"
+          },
+          "link": null
+        },
+        {
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "name": "quality",
+          "type": "INT",
+          "widget": {
+            "name": "quality"
+          },
+          "link": null
+        },
+        {
+          "name": "timeout",
+          "type": "INT",
+          "widget": {
+            "name": "timeout"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "图片 URL",
+          "type": "STRING",
+          "links": [
+            6
+          ]
+        },
+        {
+          "name": "创建时间",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJUploadToImageHost"
+      },
+      "widgets_values": [
+        "https://imageproxy.zhongzhuan.chat/api/upload",
+        "jpeg",
+        100,
+        30
+      ]
+    },
+    {
+      "id": 9,
+      "type": "XLJKlingCreateVideo",
+      "pos": [
+        730,
+        60
+      ],
+      "size": [
+        400,
+        480
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": null
+        },
+        {
+          "name": "model",
+          "type": "COMBO",
+          "widget": {
+            "name": "model"
+          },
+          "link": null
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          },
+          "link": null
+        },
+        {
+          "name": "api_key",
+          "type": "STRING",
+          "widget": {
+            "name": "api_key"
+          },
+          "link": null
+        },
+        {
+          "name": "image_1",
+          "type": "STRING",
+          "widget": {
+            "name": "image_1"
+          },
+          "link": 6
+        },
+        {
+          "name": "image_2",
+          "type": "STRING",
+          "widget": {
+            "name": "image_2"
+          },
+          "link": null
+        },
+        {
+          "name": "image_list",
+          "type": "STRING",
+          "widget": {
+            "name": "image_list"
+          },
+          "link": null
+        },
+        {
+          "name": "duration",
+          "type": "INT",
+          "widget": {
+            "name": "duration"
+          },
+          "link": null
+        },
+        {
+          "name": "negative_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "negative_prompt"
+          },
+          "link": null
+        },
+        {
+          "name": "cfg_scale",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg_scale"
+          },
+          "link": null
+        },
+        {
+          "name": "sound",
+          "type": "COMBO",
+          "widget": {
+            "name": "sound"
+          },
+          "link": null
+        },
+        {
+          "name": "mode_type",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode_type"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "任务 ID",
+          "type": "STRING",
+          "links": [
+            7
+          ]
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "任务类型",
+          "type": "STRING",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJKlingCreateVideo"
+      },
+      "widgets_values": [
+        "Product showcase of luxury watch rotating on marble surface",
+        "kling-v2-5-turbo(最高10s)",
+        "16:9",
+        "",
+        "图生视频",
+        "",
+        "",
+        "",
+        5,
+        "",
+        0.5,
+        "off",
+        "std"
+      ]
+    },
+    {
+      "id": 10,
+      "type": "XLJKlingQueryVideo",
+      "pos": [
+        1240,
+        240
+      ],
+      "size": [
+        290,
+        240
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "widget": {
+            "name": "task_id"
+          },
+          "link": 7
+        },
+        {
+          "name": "api_key",
+          "type": "STRING",
+          "widget": {
+            "name": "api_key"
+          },
+          "link": null
+        },
+        {
+          "name": "video_type",
+          "type": "STRING",
+          "widget": {
+            "name": "video_type"
+          },
+          "link": 8
+        },
+        {
+          "name": "wait",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "wait"
+          },
+          "link": null
+        },
+        {
+          "name": "poll_interval_sec",
+          "type": "INT",
+          "widget": {
+            "name": "poll_interval_sec"
+          },
+          "link": null
+        },
+        {
+          "name": "timeout_sec",
+          "type": "INT",
+          "widget": {
+            "name": "timeout_sec"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "任务 ID",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "视频 URL",
+          "type": "STRING",
+          "links": [
+            9
+          ]
+        },
+        {
+          "name": "增强提示词",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJKlingQueryVideo"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "image2video",
+        true,
+        10,
+        1800
+      ]
+    },
+    {
+      "id": 11,
+      "type": "XLJDownloadVideo",
+      "pos": [
+        1640,
+        240
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "widget": {
+            "name": "video_url"
+          },
+          "link": 9
+        },
+        {
+          "name": "save_dir",
+          "type": "STRING",
+          "widget": {
+            "name": "save_dir"
+          },
+          "link": null
+        },
+        {
+          "name": "filename",
+          "type": "STRING",
+          "widget": {
+            "name": "filename"
+          },
+          "link": null
+        },
+        {
+          "name": "timeout",
+          "type": "INT",
+          "widget": {
+            "name": "timeout"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "local_path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJDownloadVideo"
+      },
+      "widgets_values": [
+        "",
+        "output/xlj_video",
+        "kling_i2v",
+        180
+      ]
+    },
+    {
+      "id": 12,
+      "type": "Note",
+      "pos": [
+        800,
+        550
+      ],
+      "size": [
+        460,
+        160
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 2,
+      "properties": {
+        "text": "多图参考模式\n━━━━━━━━━━━━━━━━━━\n需提供2张以上参考图\n模式参数选「多图参考」\n使用 image_list 传入URL列表"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 13,
+      "type": "ttN text",
+      "pos": [
+        810,
+        740
+      ],
+      "size": [
+        400,
+        180
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ttN text"
+      },
+      "widgets_values": [
+        "Dynamic video transitioning between multiple scenes with smooth effects",
+        [
+          false,
+          true
+        ]
+      ]
+    },
+    {
+      "id": 14,
+      "type": "XLJKlingCreateVideo",
+      "pos": [
+        810,
+        960
+      ],
+      "size": [
+        400,
+        480
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 10
+        },
+        {
+          "name": "model",
+          "type": "COMBO",
+          "widget": {
+            "name": "model"
+          },
+          "link": null
+        },
+        {
+          "name": "aspect_ratio",
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          },
+          "link": null
+        },
+        {
+          "name": "api_key",
+          "type": "STRING",
+          "widget": {
+            "name": "api_key"
+          },
+          "link": null
+        },
+        {
+          "name": "image_1",
+          "type": "STRING",
+          "widget": {
+            "name": "image_1"
+          },
+          "link": null
+        },
+        {
+          "name": "image_2",
+          "type": "STRING",
+          "widget": {
+            "name": "image_2"
+          },
+          "link": null
+        },
+        {
+          "name": "image_list",
+          "type": "STRING",
+          "widget": {
+            "name": "image_list"
+          },
+          "link": null
+        },
+        {
+          "name": "duration",
+          "type": "INT",
+          "widget": {
+            "name": "duration"
+          },
+          "link": null
+        },
+        {
+          "name": "negative_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "negative_prompt"
+          },
+          "link": null
+        },
+        {
+          "name": "cfg_scale",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg_scale"
+          },
+          "link": null
+        },
+        {
+          "name": "sound",
+          "type": "COMBO",
+          "widget": {
+            "name": "sound"
+          },
+          "link": null
+        },
+        {
+          "name": "mode_type",
+          "type": "COMBO",
+          "widget": {
+            "name": "mode_type"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "任务 ID",
+          "type": "STRING",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "任务类型",
+          "type": "STRING",
+          "links": [
+            12
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJKlingCreateVideo"
+      },
+      "widgets_values": [
+        "",
+        "kling-v1-6",
+        "16:9",
+        "",
+        "多图参考",
+        "",
+        "",
+        "",
+        5,
+        "",
+        0.5,
+        "off",
+        "std"
+      ]
+    },
+    {
+      "id": 15,
+      "type": "XLJKlingQueryVideo",
+      "pos": [
+        1320,
+        960
+      ],
+      "size": [
+        290,
+        240
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "task_id",
+          "type": "STRING",
+          "widget": {
+            "name": "task_id"
+          },
+          "link": 11
+        },
+        {
+          "name": "api_key",
+          "type": "STRING",
+          "widget": {
+            "name": "api_key"
+          },
+          "link": null
+        },
+        {
+          "name": "video_type",
+          "type": "STRING",
+          "widget": {
+            "name": "video_type"
+          },
+          "link": 12
+        },
+        {
+          "name": "wait",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "wait"
+          },
+          "link": null
+        },
+        {
+          "name": "poll_interval_sec",
+          "type": "INT",
+          "widget": {
+            "name": "poll_interval_sec"
+          },
+          "link": null
+        },
+        {
+          "name": "timeout_sec",
+          "type": "INT",
+          "widget": {
+            "name": "timeout_sec"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "任务 ID",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "视频 URL",
+          "type": "STRING",
+          "links": [
+            13
+          ]
+        },
+        {
+          "name": "增强提示词",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJKlingQueryVideo"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "multi-image2video",
+        true,
+        10,
+        1800
+      ]
+    },
+    {
+      "id": 16,
+      "type": "XLJDownloadVideo",
+      "pos": [
+        1720,
+        960
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 2,
+      "inputs": [
+        {
+          "name": "video_url",
+          "type": "STRING",
+          "widget": {
+            "name": "video_url"
+          },
+          "link": 13
+        },
+        {
+          "name": "save_dir",
+          "type": "STRING",
+          "widget": {
+            "name": "save_dir"
+          },
+          "link": null
+        },
+        {
+          "name": "filename",
+          "type": "STRING",
+          "widget": {
+            "name": "filename"
+          },
+          "link": null
+        },
+        {
+          "name": "timeout",
+          "type": "INT",
+          "widget": {
+            "name": "timeout"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "local_path",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "status",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
+        "Node name for S&R": "XLJDownloadVideo"
+      },
+      "widgets_values": [
+        "",
+        "output/xlj_video",
+        "kling_multi",
+        180
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      3,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "STRING"
+    ],
+    [
+      3,
+      3,
+      2,
+      4,
+      2,
+      "STRING"
+    ],
+    [
+      4,
+      4,
+      2,
+      5,
+      0,
+      "STRING"
+    ],
+    [
+      5,
+      7,
+      0,
+      8,
+      0,
+      "IMAGE"
+    ],
+    [
+      6,
+      8,
+      0,
+      9,
+      4,
+      "STRING"
+    ],
+    [
+      7,
+      9,
+      0,
+      10,
+      0,
+      "STRING"
+    ],
+    [
+      8,
+      9,
+      2,
+      10,
+      2,
+      "STRING"
+    ],
+    [
+      9,
+      10,
+      2,
+      11,
+      0,
+      "STRING"
+    ],
+    [
+      10,
+      13,
+      0,
+      14,
+      0,
+      "STRING"
+    ],
+    [
+      11,
+      14,
+      0,
+      15,
+      0,
+      "STRING"
+    ],
+    [
+      12,
+      14,
+      2,
+      15,
+      2,
+      "STRING"
+    ],
+    [
+      13,
+      15,
+      2,
+      16,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "文生视频 - 无需参考图",
+      "bounding": [
+        -1520,
+        10,
+        620,
+        1500
+      ],
+      "color": "#3b82f6",
+      "font_size": 24
+    },
+    {
+      "id": 2,
+      "title": "图生视频 - 仅需1张参考图",
+      "bounding": [
+        -400,
+        10,
+        800,
+        1500
+      ],
+      "color": "#22c55e",
+      "font_size": 24
+    },
+    {
+      "id": 3,
+      "title": "多图参考 - 需2张以上参考图",
+      "bounding": [
+        700,
+        530,
+        1400,
+        1500
+      ],
+      "color": "#f59e0b",
+      "font_size": 24
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 1.0,
+      "offset": [
+        0,
+        0
+      ]
+    },
+    "workflowRendererVersion": "LG",
+    "frontendVersion": "1.37.11",
+    "ue_links": [],
+    "links_added_by_ue": []
+  },
+  "version": 0.4
+}
