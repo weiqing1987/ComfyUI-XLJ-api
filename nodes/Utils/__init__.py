@@ -124,7 +124,7 @@ class XLJDownloadVideo:
             "timeout": "超时",
         }
 
-    def download(self, video_url, save_dir="output/xlj_video", filename="", timeout=180):
+    def download(self, video_url, save_dir="", filename="", timeout=180):
         import os
         import time
         from pathlib import Path
@@ -136,14 +136,18 @@ class XLJDownloadVideo:
             print("[ComfyUI-XLJ-api] 信陵君 2. 查询节点的'视频 URL'输出是否已连接")
             return ("", "error: video_url is empty")
 
-        # 创建保存目录
+        # 默认保存到 ComfyUI 输出目录
+        if not save_dir:
+            save_dir = str(Path(folder_paths.get_output_directory()) / "xlj_video")
         save_path = Path(save_dir)
         save_path.mkdir(parents=True, exist_ok=True)
 
-        # 生成文件名
+        # 生成文件名（自动补 .mp4 后缀）
         if not filename:
             timestamp = int(time.time())
             filename = f"video_{timestamp}.mp4"
+        elif not filename.lower().endswith(('.mp4', '.webm', '.mov', '.avi')):
+            filename += ".mp4"
 
         file_path = save_path / filename
 

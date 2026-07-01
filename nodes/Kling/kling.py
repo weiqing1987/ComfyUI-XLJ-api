@@ -4,8 +4,15 @@ Kling 视频生成节点 - 信陵君 AI
 
 import json
 import time
+import os
 import requests
+from pathlib import Path
 from ..xlj_utils import env_or, http_headers_json, API_BASE
+
+try:
+    import folder_paths
+except ImportError:
+    folder_paths = None
 
 session = requests.Session()
 session.trust_env = False
@@ -17,7 +24,14 @@ MODEL_CONFIG = {
         "t2v_endpoint": "/kling/text-to-video/kling-3.0-turbo",
         "i2v_endpoint": "/kling/image-to-video/kling-3.0-turbo",
         "use_old_api": False,      # 新格式：模型名在URL路径中
-        "max_duration": 10,
+        "max_duration": 15,
+    },
+    "kling-v3(3~15秒)": {
+        "model_key": "kling-v3",
+        "t2v_endpoint": "/kling/v1/videos/text2video",
+        "i2v_endpoint": "/kling/v1/videos/image2video",
+        "use_old_api": True,       # 旧格式：model_name 参数
+        "max_duration": 15,
     },
     "kling-v2-5-turbo(最高10s)": {
         "model_key": "kling-v2-5-turbo",
@@ -41,6 +55,34 @@ MODEL_CONFIG = {
         "max_duration": 10,
     },
 }
+
+# 模型下拉列表——排除 kling-v1-6（仅在多图参考中自动路由）
+MODEL_LIST = [k for k in MODEL_CONFIG if k != "kling-v1-6"]
+
+# 支持 3~15 秒时长的模型（v3 系列）
+_FLEX_DURATION_MODELS = {"kling-3.0-turbo", "kling-v3(3~15秒)"}
+# 旧模型（v2-5, v1, v1-6）仅支持 5 或 10 秒
+_LEGACY_DURATIONS = {5, 10}
+
+
+def _validate_duration(model_display, duration, mode="文生视频"):
+    """校验时长：图生视频仅支持 5/10 秒，文生视频 v3 系列支持 3~15 秒"""
+    is_image_mode = mode in ("图生视频", "首尾帧")
+    if is_image_mode:
+        # API 文档：所有模型的图生视频/首尾帧仅支持 5 或 10 秒
+        if duration not in (5, 10):
+            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - {model_display} 图生视频不支持 {duration}秒，自动设为 5 秒")
+            return 5
+        return duration
+    # 文生视频：v3/turbo 支持 3~15 秒，旧模型仅 5/10 秒
+    if model_display in _FLEX_DURATION_MODELS:
+        if duration < 3 or duration > 15:
+            raise RuntimeError(f"{model_display} 时长仅支持 3~15 秒，当前值：{duration}")
+        return duration
+    if duration not in _LEGACY_DURATIONS:
+        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - {model_display} 不支持 {duration}秒，自动设为 5 秒")
+        return 5
+    return duration
 
 
 def _build_endpoint(api_base, model_display, mode_text):
@@ -69,13 +111,19 @@ def _build_endpoint(api_base, model_display, mode_text):
 def _build_payload(cfg, is_image, prompt, aspect_ratio, duration,
                    negative_prompt, cfg_scale, sound, mode_type,
                    image_1="", image_2="", mode_text="", image_list="",
-                   resolution="720p"):
+                   resolution="720p", image_3="", image_4=""):
     """构建请求 payload"""
-    # 多图参考：使用 image_list 参数
+    # 多图参考：收集 image_1 ~ image_4
     if mode_text == "多图参考":
-        urls = [url.strip() for url in image_list.split("\n") if url.strip()]
+        urls = []
+        for img in [image_1, image_2, image_3, image_4]:
+            if img and img.strip():
+                urls.append(img.strip())
+        # 也支持 image_list 多行文本作为补充
+        if not urls and image_list:
+            urls = [url.strip() for url in image_list.split("\n") if url.strip()]
         if not urls:
-            raise RuntimeError("多图参考模式需要提供 image_list（图片URL列表）")
+            raise RuntimeError("多图参考模式需要提供至少2张参考图片（image_1 ~ image_4）")
         payload = {
             "model_name": "kling-v1-6",
             "prompt": prompt,
@@ -85,6 +133,8 @@ def _build_payload(cfg, is_image, prompt, aspect_ratio, duration,
             "aspect_ratio": aspect_ratio,
             "duration": str(duration),
         }
+        if sound == "on":
+            payload["sound"] = "on"
         if negative_prompt:
             payload["negative_prompt"] = negative_prompt
         return payload
@@ -99,7 +149,7 @@ def _build_payload(cfg, is_image, prompt, aspect_ratio, duration,
             "mode": mode_type,
             "aspect_ratio": aspect_ratio,
             "duration": str(duration),
-            "sound": sound,
+            "sound": "on" if sound == "on" else "off",
         }
         if is_image:
             payload["image"] = image_1.strip()
@@ -125,6 +175,8 @@ def _build_payload(cfg, is_image, prompt, aspect_ratio, duration,
                 "duration": duration,
             }
         }
+        if sound == "on":
+            payload["settings"]["generate_audio"] = True
         if resolution and not cfg.get("use_old_api", True):
             payload["settings"]["resolution"] = resolution
         if aspect_ratio:
@@ -196,20 +248,41 @@ def _query_once(api_base, headers, task_id, video_type):
             data = result.get("data", {})
             status = data.get("task_status", "unknown")
 
-            # 提取视频 URL
+            # 提取视频 URL — 兼容多种响应格式
             video_url = ""
             task_info = data.get("task_info", {})
             if isinstance(task_info, dict):
-                video_url = task_info.get("video_url", "")
+                video_url = task_info.get("video_url", "") or task_info.get("url", "")
+            elif isinstance(task_info, str):
+                try:
+                    ti = json.loads(task_info)
+                    video_url = ti.get("video_url", "") or ti.get("url", "")
+                except json.JSONDecodeError:
+                    pass
             if not video_url:
                 video_url = data.get("video_url", "")
+            if not video_url:
+                task_result = data.get("task_result", {})
+                if isinstance(task_result, dict):
+                    video_url = task_result.get("video_url", "")
+                    if not video_url:
+                        videos = task_result.get("videos", [])
+                        if isinstance(videos, list) and len(videos) > 0:
+                            video_url = videos[0].get("url", "")
             if not video_url:
                 videos = data.get("videos", [])
                 if isinstance(videos, list) and len(videos) > 0:
                     video_url = videos[0].get("url", "")
+            if not video_url:
+                result_data = data.get("result", {})
+                if isinstance(result_data, dict):
+                    video_url = result_data.get("video_url", "")
+
 
             if status == "succeed":
                 print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 完成响应：{json.dumps(result, ensure_ascii=False)[:500]}")
+                if not video_url:
+                    print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 警告：status=success 但未提取到 video_url，data keys={list(data.keys())}")
 
             return status, video_url
 
@@ -238,9 +311,9 @@ class XLJKlingCreateVideo:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model": (list(MODEL_CONFIG.keys()), {
+                "model": (MODEL_LIST, {
                     "default": "kling-3.0-turbo",
-                    "tooltip": "选择模型（kling-3.0-turbo 最强，v2-5-turbo 最高10秒）"
+                    "tooltip": "选择模型（kling-3.0-turbo / kling-v3 支持3~15秒，其余仅支持5或10秒）"
                 }),
                 "aspect_ratio": (["16:9", "9:16", "1:1"], {
                     "default": "16:9",
@@ -264,19 +337,29 @@ class XLJKlingCreateVideo:
                 "image_2": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "参考图片 2 URL（首尾帧的尾帧）"
+                    "tooltip": "参考图片 2 URL（首尾帧的尾帧 / 多图参考第2张图）"
+                }),
+                "image_3": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "参考图片 3 URL（多图参考第3张图）"
+                }),
+                "image_4": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "参考图片 4 URL（多图参考第4张图）"
                 }),
                 "image_list": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "多图参考的图片 URL 列表（每行一个URL，仅多图参考模式使用）"
+                    "tooltip": "多图参考的图片 URL 列表（每行一个URL，备选方案）"
                 }),
                 "duration": ("INT", {
                     "default": 5,
-                    "min": 5,
-                    "max": 10,
-                    "step": 5,
-                    "tooltip": "视频时长（秒），v2-5-turbo 最高 10 秒"
+                    "min": 3,
+                    "max": 15,
+                    "step": 1,
+                    "tooltip": "视频时长（秒）。kling-3.0-turbo / kling-v3 支持3~15秒，其他模型仅支持5或10秒"
                 }),
                 "negative_prompt": ("STRING", {
                     "default": "",
@@ -315,6 +398,8 @@ class XLJKlingCreateVideo:
             "mode": "模式",
             "image_1": "参考图片 1",
             "image_2": "参考图片 2",
+            "image_3": "参考图片 3",
+            "image_4": "参考图片 4",
             "image_list": "多图 URL 列表",
             "duration": "时长",
             "negative_prompt": "负面提示词",
@@ -331,6 +416,7 @@ class XLJKlingCreateVideo:
 
     def create(self, prompt, model, aspect_ratio, api_key="",
                mode="文生视频", image_1="", image_2="",
+               image_3="", image_4="",
                duration=5, negative_prompt="", cfg_scale=0.5,
                sound="off", mode_type="std", image_list="", resolution="720p"):
         api_key = env_or(api_key, "XLJ_API_KEY")
@@ -344,10 +430,12 @@ class XLJKlingCreateVideo:
         is_image = mode in ("图生视频", "首尾帧") or is_multi_image
 
         if is_multi_image:
-            # 多图参考：不依赖具体模型选择，使用 image_list
-            urls = [url.strip() for url in image_list.split("\n") if url.strip()]
-            if not urls:
-                raise RuntimeError("多图参考模式需要提供 image_list（图片URL列表）")
+            # 多图参考：从 image_1~image_4 收集图片
+            urls = [img.strip() for img in [image_1, image_2, image_3, image_4] if img and img.strip()]
+            if not urls and image_list:
+                urls = [url.strip() for url in image_list.split("\n") if url.strip()]
+            if len(urls) < 2:
+                raise RuntimeError("多图参考模式需要提供至少2张参考图片")
             endpoint, cfg, _ = _build_endpoint(api_base, model, mode)
         else:
             cfg = MODEL_CONFIG.get(model)
@@ -362,10 +450,15 @@ class XLJKlingCreateVideo:
 
             endpoint, _, _ = _build_endpoint(api_base, model, mode)
 
+        # 多图参考实际使用 kling-v1-6，统一按旧模型校验时长
+        effective_model = "kling-v1-6" if is_multi_image else model
+        duration = _validate_duration(effective_model, duration, mode)
+
         payload = _build_payload(cfg if not is_multi_image else MODEL_CONFIG["kling-v1-6"],
                                  is_image, prompt, aspect_ratio, duration,
                                  negative_prompt, cfg_scale, sound, mode_type,
-                                 image_1, image_2, mode, image_list, resolution)
+                                 image_1, image_2, mode, image_list, resolution,
+                                 image_3, image_4)
 
         print(f"[ComfyUI-XLJ-api] 信陵君 Kling - {mode} 创建任务")
         print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 模型：{model}, 时长：{duration}秒")
@@ -516,7 +609,7 @@ class XLJKlingCreateAndWait:
                     "multiline": True,
                     "tooltip": "视频生成提示词"
                 }),
-                "model": (list(MODEL_CONFIG.keys()), {
+                "model": (MODEL_LIST, {
                     "default": "kling-3.0-turbo",
                     "tooltip": "选择模型"
                 }),
@@ -542,19 +635,29 @@ class XLJKlingCreateAndWait:
                 "image_2": ("STRING", {
                     "default": "",
                     "multiline": False,
-                    "tooltip": "参考图片 2 URL（首尾帧的尾帧）"
+                    "tooltip": "参考图片 2 URL（首尾帧的尾帧 / 多图参考第2张图）"
+                }),
+                "image_3": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "参考图片 3 URL（多图参考第3张图）"
+                }),
+                "image_4": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "参考图片 4 URL（多图参考第4张图）"
                 }),
                 "image_list": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "多图参考的图片 URL 列表（每行一个URL，仅多图参考模式使用）"
+                    "tooltip": "多图参考的图片 URL 列表（每行一个URL，备选方案）"
                 }),
                 "duration": ("INT", {
                     "default": 5,
-                    "min": 5,
-                    "max": 10,
-                    "step": 5,
-                    "tooltip": "视频时长（秒），v2-5-turbo 最高 10 秒"
+                    "min": 3,
+                    "max": 15,
+                    "step": 1,
+                    "tooltip": "视频时长（秒）。kling-3.0-turbo / kling-v3 支持3~15秒，其他模型仅支持5或10秒"
                 }),
                 "negative_prompt": ("STRING", {
                     "default": "",
@@ -605,6 +708,8 @@ class XLJKlingCreateAndWait:
             "mode": "模式",
             "image_1": "参考图片 1",
             "image_2": "参考图片 2",
+            "image_3": "参考图片 3",
+            "image_4": "参考图片 4",
             "image_list": "多图 URL 列表",
             "duration": "时长",
             "negative_prompt": "负面提示词",
@@ -624,6 +729,7 @@ class XLJKlingCreateAndWait:
 
     def create_and_wait(self, prompt, model, aspect_ratio, api_key="",
                         mode="文生视频", image_1="", image_2="",
+                        image_3="", image_4="",
                         duration=5, negative_prompt="", cfg_scale=0.5,
                         sound="off", mode_type="std",
                         wait_timeout_sec=1800, poll_interval_sec=10,
@@ -631,7 +737,7 @@ class XLJKlingCreateAndWait:
         creator = XLJKlingCreateVideo()
         task_id, status, video_type = creator.create(
             prompt, model, aspect_ratio, api_key,
-            mode, image_1, image_2,
+            mode, image_1, image_2, image_3, image_4,
             duration, negative_prompt, cfg_scale,
             sound, mode_type, image_list, resolution
         )
@@ -655,14 +761,219 @@ class XLJKlingCreateAndWait:
         return (status, video_url, enhanced_prompt, task_id)
 
 
+class XLJKlingCreateAndSave:
+    """创建 Kling 视频 → 等待完成 → 自动保存到本地（一键出片）"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "prompt": ("STRING", {
+                    "default": "",
+                    "multiline": True,
+                    "tooltip": "视频生成提示词"
+                }),
+                "model": (MODEL_LIST, {
+                    "default": "kling-3.0-turbo",
+                    "tooltip": "选择模型"
+                }),
+                "aspect_ratio": (["16:9", "9:16", "1:1"], {
+                    "default": "16:9",
+                    "tooltip": "视频宽高比"
+                }),
+                "api_key": ("STRING", {
+                    "default": "",
+                    "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"
+                }),
+            },
+            "optional": {
+                "mode": (["文生视频", "图生视频", "首尾帧", "多图参考"], {
+                    "default": "文生视频",
+                    "tooltip": "文生视频无需图片，图生视频需1张参考图，多图参考需提供图片URL列表"
+                }),
+                "image_1": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "参考图片 1 URL"
+                }),
+                "image_2": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "参考图片 2 URL（首尾帧的尾帧 / 多图参考第2张图）"
+                }),
+                "image_3": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "参考图片 3 URL（多图参考第3张图）"
+                }),
+                "image_4": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "tooltip": "参考图片 4 URL（多图参考第4张图）"
+                }),
+                "image_list": ("STRING", {
+                    "default": "",
+                    "multiline": True,
+                    "tooltip": "多图参考的图片 URL 列表（每行一个URL，备选方案）"
+                }),
+                "duration": ("INT", {
+                    "default": 5,
+                    "min": 3,
+                    "max": 15,
+                    "step": 1,
+                    "tooltip": "视频时长（秒）。kling-3.0-turbo / kling-v3 支持3~15秒，其他模型仅支持5或10秒"
+                }),
+                "negative_prompt": ("STRING", {
+                    "default": "",
+                    "multiline": True,
+                    "tooltip": "负面提示词（可选）"
+                }),
+                "cfg_scale": ("FLOAT", {
+                    "default": 0.5,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.1,
+                    "tooltip": "CFG 引导比例 (0-1)"
+                }),
+                "resolution": (["720p", "1080p"], {
+                    "default": "720p",
+                    "tooltip": "视频分辨率（仅 kling-3.0-turbo 支持）"
+                }),
+                "sound": (["off", "on"], {
+                    "default": "off",
+                    "tooltip": "生成视频声音"
+                }),
+                "mode_type": (["std", "pro"], {
+                    "default": "std",
+                    "tooltip": "生成模式：std 标准，pro 专业"
+                }),
+                "wait_timeout_sec": ("INT", {
+                    "default": 1800,
+                    "min": 60,
+                    "max": 7200,
+                    "tooltip": "等待超时时间（秒）"
+                }),
+                "poll_interval_sec": ("INT", {
+                    "default": 10,
+                    "min": 5,
+                    "max": 60,
+                    "tooltip": "轮询间隔（秒）"
+                }),
+            }
+        }
+
+    @classmethod
+    def INPUT_LABELS(cls):
+        return {
+            "prompt": "提示词",
+            "model": "模型",
+            "aspect_ratio": "宽高比",
+            "api_key": "API 密钥",
+            "mode": "模式",
+            "image_1": "参考图片 1",
+            "image_2": "参考图片 2",
+            "image_3": "参考图片 3",
+            "image_4": "参考图片 4",
+            "image_list": "多图 URL 列表",
+            "duration": "时长",
+            "negative_prompt": "负面提示词",
+            "cfg_scale": "CFG 比例",
+            "resolution": "分辨率",
+            "sound": "声音",
+            "mode_type": "生成模式",
+            "wait_timeout_sec": "等待超时",
+            "poll_interval_sec": "轮询间隔",
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = ("状态", "视频 URL", "本地路径")
+    FUNCTION = "create_and_save"
+    CATEGORY = "XLJ/Kling"
+    OUTPUT_NODE = True
+
+    def create_and_save(self, prompt, model, aspect_ratio, api_key="",
+                        mode="文生视频", image_1="", image_2="",
+                        image_3="", image_4="",
+                        duration=5, negative_prompt="", cfg_scale=0.5,
+                        sound="off", mode_type="std",
+                        wait_timeout_sec=1800, poll_interval_sec=10,
+                        image_list="", resolution="720p"):
+        # 1. 创建任务
+        creator = XLJKlingCreateVideo()
+        task_id, create_status, video_type = creator.create(
+            prompt, model, aspect_ratio, api_key,
+            mode, image_1, image_2, image_3, image_4,
+            duration, negative_prompt, cfg_scale,
+            sound, mode_type, image_list, resolution
+        )
+
+        print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 等待任务完成：{task_id}")
+
+        # 2. 等待完成
+        querier = XLJKlingQueryVideo()
+        task_id, status, video_url, enhanced_prompt = querier.query(
+            task_id=task_id,
+            api_key=api_key,
+            video_type=video_type,
+            wait=True,
+            poll_interval_sec=poll_interval_sec,
+            timeout_sec=wait_timeout_sec
+        )
+
+        # 3. 下载保存
+        local_path = ""
+        if video_url and status == "succeed":
+            try:
+                save_dir = Path(folder_paths.get_output_directory()) / "xlj_video"
+                save_dir.mkdir(parents=True, exist_ok=True)
+                timestamp = int(time.time())
+                filename = f"kling_{timestamp}.mp4"
+                file_path = save_dir / filename
+
+                resp = requests.get(video_url, stream=True, timeout=180)
+                resp.raise_for_status()
+                with open(file_path, 'wb') as f:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        f.write(chunk)
+
+                local_path = str(file_path)
+                print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 视频已保存：{local_path}")
+
+                # 构建预览
+                resolved = file_path.resolve()
+                output_dir = Path(folder_paths.get_output_directory()).resolve()
+                try:
+                    relative = resolved.relative_to(output_dir)
+                    preview = {
+                        "filename": relative.name,
+                        "subfolder": "" if str(relative.parent) == "." else str(relative.parent).replace("\\", "/"),
+                        "type": "output",
+                    }
+                    return {
+                        "ui": {"images": [preview], "animated": (True,)},
+                        "result": (status, video_url, local_path)
+                    }
+                except ValueError:
+                    pass
+
+            except Exception as e:
+                print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 保存失败：{str(e)}")
+        else:
+            print(f"[ComfyUI-XLJ-api] 信陵君 Kling - 未获取到视频 URL，跳过保存")
+
+        return (status, video_url, local_path)
+
+
 NODE_CLASS_MAPPINGS = {
     "XLJKlingCreateVideo": XLJKlingCreateVideo,
     "XLJKlingQueryVideo": XLJKlingQueryVideo,
     "XLJKlingCreateAndWait": XLJKlingCreateAndWait,
+    "XLJKlingCreateAndSave": XLJKlingCreateAndSave,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "XLJKlingCreateVideo": "🎬 XLJ Kling 创建视频",
     "XLJKlingQueryVideo": "🔍 XLJ Kling 查询任务",
     "XLJKlingCreateAndWait": "⚡ XLJ Kling 一键生成",
+    "XLJKlingCreateAndSave": "⚡ XLJ Kling 一键出片",
 }
