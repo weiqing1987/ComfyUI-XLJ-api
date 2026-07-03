@@ -3,6 +3,8 @@ Utils 工具节点 - 信陵君 AI
 """
 
 import json
+import os
+import time
 import requests
 from pathlib import Path
 import folder_paths
@@ -175,14 +177,104 @@ class XLJDownloadVideo:
             raise RuntimeError(f"下载失败：{str(e)}")
 
 
+class XLJUploadVideo:
+    """上传视频到图床，返回可访问的 URL"""
+
+    VIDEO_EXTENSIONS = ('.mp4', '.webm', '.mov', '.avi', '.mkv')
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        input_dir = folder_paths.get_input_directory()
+        try:
+            files = [f for f in os.listdir(input_dir)
+                     if os.path.isfile(os.path.join(input_dir, f))
+                     and os.path.splitext(f)[1].lower() in cls.VIDEO_EXTENSIONS]
+        except Exception:
+            files = []
+        return {
+            "required": {
+                "video": (sorted(files), {"image_upload": True}),
+            },
+            "optional": {
+                "upload_url": ("STRING", {
+                    "default": "https://imageproxy.zhongzhuan.chat/api/upload",
+                    "tooltip": "图床 API 地址"
+                }),
+                "timeout": ("INT", {
+                    "default": 300,
+                    "min": 10,
+                    "max": 600,
+                    "tooltip": "上传超时时间 (秒)"
+                }),
+            }
+        }
+
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("视频 URL", "文件名")
+    FUNCTION = "upload"
+    CATEGORY = "XLJ/Utils"
+    OUTPUT_NODE = True
+
+    @classmethod
+    def INPUT_LABELS(cls):
+        return {
+            "video": "视频文件",
+            "upload_url": "图床 URL",
+            "timeout": "超时",
+        }
+
+    def upload(self, video, upload_url="https://imageproxy.zhongzhuan.chat/api/upload", timeout=300):
+        video_path = folder_paths.get_annotated_filepath(video)
+        filename = Path(video_path).name
+
+        print(f"[ComfyUI-XLJ-api] 信陵君 - 上传视频：{filename}")
+
+        if not os.path.isfile(video_path):
+            raise RuntimeError(f"视频文件不存在：{video_path}")
+
+        try:
+            with open(video_path, 'rb') as f:
+                file_bytes = f.read()
+        except Exception as e:
+            raise RuntimeError(f"读取视频文件失败：{str(e)}")
+
+        ext = os.path.splitext(filename)[1].lower()
+        mime_map = {
+            ".mp4": "video/mp4",
+            ".webm": "video/webm",
+            ".mov": "video/quicktime",
+            ".avi": "video/x-msvideo",
+            ".mkv": "video/x-matroska",
+        }
+        mime = mime_map.get(ext, "video/mp4")
+
+        files = {"file": (filename, file_bytes, mime)}
+
+        try:
+            resp = requests.post(upload_url, files=files, timeout=int(timeout))
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            raise RuntimeError(f"视频上传失败：{str(e)}")
+
+        url = data.get("url", "")
+        if not url:
+            raise RuntimeError(f"上传响应缺少 url 字段：{json.dumps(data, ensure_ascii=False)}")
+
+        print(f"[ComfyUI-XLJ-api] 信陵君 - 视频上传成功：{url}")
+        return (url, filename)
+
+
 NODE_CLASS_MAPPINGS = {
     "XLJUploadToImageHost": XLJUploadToImageHost,
     "XLJDownloadVideo": XLJDownloadVideo,
+    "XLJUploadVideo": XLJUploadVideo,
     "XLJCSVBatchReader": XLJCSVBatchReader,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "XLJUploadToImageHost": "📷 XLJ 上传图片",
     "XLJDownloadVideo": "📥 XLJ 下载视频",
+    "XLJUploadVideo": "📹 XLJ 上传视频",
     "XLJCSVBatchReader": "📄 XLJ CSV 批量读取",
 }
