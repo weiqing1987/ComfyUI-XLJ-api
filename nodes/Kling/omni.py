@@ -15,7 +15,7 @@ try:
 except ImportError:
     folder_paths = None
 
-MODEL_LIST = ["kling-omni-video", "kling-video-o1", "kling-v3-omni"]
+MODEL_LIST = ["kling-video-o1", "kling-v3-omni"]
 
 OMNI_ENDPOINT = "/kling/v1/videos/omni-video"
 
@@ -29,8 +29,8 @@ def _validate_omni_duration(refer_type, duration):
     """校验时长：base 模式忽略时长，feature 模式 3~10s"""
     if _is_base_mode(refer_type):
         return duration  # API 忽略此值
-    if duration < 3 or duration > 15:
-        raise RuntimeError(f"Omni feature 模式时长仅支持 3~15 秒，当前值：{duration}")
+    if duration < 3 or duration > 10:
+        raise RuntimeError(f"Omni feature 模式时长仅支持 3~10 秒，当前值：{duration}")
     return duration
 
 
@@ -98,7 +98,7 @@ class XLJKlingCreateOmniVideo:
             },
             "optional": {
                 "model": (MODEL_LIST, {
-                    "default": "kling-omni-video",
+                    "default": "kling-video-o1",
                     "tooltip": "Omni 模型"
                 }),
                 "video_url": ("STRING", {
@@ -141,7 +141,7 @@ class XLJKlingCreateOmniVideo:
                 "duration": ("INT", {
                     "default": 5,
                     "min": 3,
-                    "max": 15,
+                    "max": 10,
                     "step": 1,
                     "tooltip": "视频时长（秒，仅 feature 模式生效）"
                 }),
@@ -177,7 +177,7 @@ class XLJKlingCreateOmniVideo:
     CATEGORY = "XLJ/Kling"
 
     def create(self, prompt, api_key="",
-               model="kling-omni-video",
+               model="kling-video-o1",
                video_url="", refer_type="base", keep_original_sound="no",
                image_1="", image_2="", image_3="", image_4="",
                element_ids="", aspect_ratio="16:9", duration=5, mode_type="pro"):
@@ -340,7 +340,7 @@ class XLJKlingCreateOmniAndWait:
             },
             "optional": {
                 "model": (MODEL_LIST, {
-                    "default": "kling-omni-video",
+                    "default": "kling-video-o1",
                     "tooltip": "Omni 模型"
                 }),
                 "video_url": ("STRING", {
@@ -383,7 +383,7 @@ class XLJKlingCreateOmniAndWait:
                 "duration": ("INT", {
                     "default": 5,
                     "min": 3,
-                    "max": 15,
+                    "max": 10,
                     "step": 1,
                     "tooltip": "视频时长（秒，仅 feature 模式生效）"
                 }),
@@ -434,7 +434,7 @@ class XLJKlingCreateOmniAndWait:
     OUTPUT_NODE = True
 
     def create_and_wait(self, prompt, api_key="",
-                        model="kling-omni-video",
+                        model="kling-video-o1",
                         video_url="", refer_type="base", keep_original_sound="no",
                         image_1="", image_2="", image_3="", image_4="",
                         element_ids="", aspect_ratio="16:9", duration=5, mode_type="pro",
@@ -481,7 +481,7 @@ class XLJKlingCreateOmniAndSave:
             },
             "optional": {
                 "model": (MODEL_LIST, {
-                    "default": "kling-omni-video",
+                    "default": "kling-video-o1",
                     "tooltip": "Omni 模型"
                 }),
                 "video_url": ("STRING", {
@@ -524,7 +524,7 @@ class XLJKlingCreateOmniAndSave:
                 "duration": ("INT", {
                     "default": 5,
                     "min": 3,
-                    "max": 15,
+                    "max": 10,
                     "step": 1,
                     "tooltip": "视频时长（秒，仅 feature 模式生效）"
                 }),
@@ -575,7 +575,7 @@ class XLJKlingCreateOmniAndSave:
     OUTPUT_NODE = True
 
     def create_and_save(self, prompt, api_key="",
-                        model="kling-omni-video",
+                        model="kling-video-o1",
                         video_url="", refer_type="base", keep_original_sound="no",
                         image_1="", image_2="", image_3="", image_4="",
                         element_ids="", aspect_ratio="16:9", duration=5, mode_type="pro",
