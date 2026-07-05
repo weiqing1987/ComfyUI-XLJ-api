@@ -18,6 +18,52 @@ session = requests.Session()
 session.trust_env = False
 
 
+def _build_edit_payload(model, prompt, video_url, image_1, image_2, image_3, image_4):
+    """构建视频编辑请求 payload"""
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "video": {
+            "url": video_url.strip(),
+        },
+    }
+
+    # reference_images
+    imgs = [img.strip() for img in [image_1, image_2, image_3, image_4] if img and img.strip()]
+    if imgs:
+        payload["reference_images"] = [{"url": url} for url in imgs]
+
+    return payload
+
+
+def _collect_images(image_1, image_2, image_3, image_4):
+    """收集非空参考图片 URL"""
+    return [img.strip() for img in [image_1, image_2, image_3, image_4] if img and img.strip()]
+
+
+_IMAGE_INPUTS = {
+    "image_1": ("STRING", {
+        "default": "", "tooltip": "参考图片 1 URL（可选，作为视频编辑的风格参考）"
+    }),
+    "image_2": ("STRING", {
+        "default": "", "tooltip": "参考图片 2 URL"
+    }),
+    "image_3": ("STRING", {
+        "default": "", "tooltip": "参考图片 3 URL"
+    }),
+    "image_4": ("STRING", {
+        "default": "", "tooltip": "参考图片 4 URL"
+    }),
+}
+
+_IMAGE_LABELS = {
+    "image_1": "参考图片 1",
+    "image_2": "参考图片 2",
+    "image_3": "参考图片 3",
+    "image_4": "参考图片 4",
+}
+
+
 class XLJGrokCreateEditVideo:
     """创建 Grok Imagine 视频编辑任务（V2V）"""
 
@@ -44,6 +90,7 @@ class XLJGrokCreateEditVideo:
                     "default": "",
                     "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"
                 }),
+                **_IMAGE_INPUTS,
             }
         }
 
@@ -54,6 +101,7 @@ class XLJGrokCreateEditVideo:
             "video_url": "视频 URL",
             "model": "模型",
             "api_key": "API 密钥",
+            **_IMAGE_LABELS,
         }
 
     RETURN_TYPES = ("STRING", "STRING")
@@ -61,7 +109,8 @@ class XLJGrokCreateEditVideo:
     FUNCTION = "create"
     CATEGORY = "XLJ/Grok"
 
-    def create(self, prompt, video_url, model="grok-imagine-video", api_key=""):
+    def create(self, prompt, video_url, model="grok-imagine-video", api_key="",
+               image_1="", image_2="", image_3="", image_4=""):
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
             raise RuntimeError("API Key 未配置，请在节点参数或环境变量中设置 XLJ_API_KEY")
@@ -72,19 +121,15 @@ class XLJGrokCreateEditVideo:
 
         api_base = API_BASE
         headers = http_headers_json(api_key)
-
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "video": {
-                "url": video_url.strip(),
-            },
-        }
-
+        payload = _build_edit_payload(model, prompt, video_url, image_1, image_2, image_3, image_4)
         endpoint = f"{api_base}/v1/videos/edits"
+
         print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 创建视频编辑任务")
         print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 模型：{model}")
         print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 提示词：{prompt[:80]}...")
+        imgs = _collect_images(image_1, image_2, image_3, image_4)
+        if imgs:
+            print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 参考图片数量：{len(imgs)}")
 
         try:
             resp = session.post(endpoint, json=payload, headers=headers, timeout=30)
@@ -142,6 +187,7 @@ class XLJGrokEditAndWait:
                     "default": "",
                     "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"
                 }),
+                **_IMAGE_INPUTS,
                 "wait_timeout_sec": ("INT", {
                     "default": 300,
                     "min": 60,
@@ -166,6 +212,7 @@ class XLJGrokEditAndWait:
             "video_url": "视频 URL",
             "model": "模型",
             "api_key": "API 密钥",
+            **_IMAGE_LABELS,
             "wait_timeout_sec": "等待超时",
             "poll_interval_sec": "轮询间隔",
         }
@@ -177,9 +224,13 @@ class XLJGrokEditAndWait:
     OUTPUT_NODE = True
 
     def edit_and_wait(self, prompt, video_url, model="grok-imagine-video", api_key="",
+                      image_1="", image_2="", image_3="", image_4="",
                       wait_timeout_sec=300, poll_interval_sec=5):
         creator = XLJGrokCreateEditVideo()
-        task_id, create_status = creator.create(prompt, video_url, model, api_key)
+        task_id, create_status = creator.create(
+            prompt, video_url, model, api_key,
+            image_1, image_2, image_3, image_4,
+        )
 
         print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 等待任务完成：{task_id}")
 
@@ -216,7 +267,7 @@ class XLJGrokEditAndWait:
             print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 第 {poll_count} 次查询：{raw_status}")
 
             if raw_status == "succeed" and video_url_result:
-                print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 视频编辑完成！URL: {video_url_result}")
+                print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 视频编辑完成！")
                 return (raw_status, video_url_result, task_id)
 
             if raw_status in ("failed", "expired"):
@@ -256,6 +307,7 @@ class XLJGrokEditAndSave:
                     "default": "",
                     "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"
                 }),
+                **_IMAGE_INPUTS,
                 "save_dir": ("STRING", {
                     "default": "output/xlj_video",
                     "tooltip": "保存目录"
@@ -288,6 +340,7 @@ class XLJGrokEditAndSave:
             "video_url": "视频 URL",
             "model": "模型",
             "api_key": "API 密钥",
+            **_IMAGE_LABELS,
             "save_dir": "保存目录",
             "filename": "文件名",
             "wait_timeout_sec": "等待超时",
@@ -301,8 +354,8 @@ class XLJGrokEditAndSave:
     OUTPUT_NODE = True
 
     def edit_and_save(self, prompt, video_url, model="grok-imagine-video", api_key="",
+                      image_1="", image_2="", image_3="", image_4="",
                       save_dir="", filename="", wait_timeout_sec=300, poll_interval_sec=5):
-        from pathlib import Path
         import os
 
         edit_wait = XLJGrokEditAndWait()
@@ -311,6 +364,7 @@ class XLJGrokEditAndSave:
             video_url=video_url,
             model=model,
             api_key=api_key,
+            image_1=image_1, image_2=image_2, image_3=image_3, image_4=image_4,
             wait_timeout_sec=wait_timeout_sec,
             poll_interval_sec=poll_interval_sec,
         )

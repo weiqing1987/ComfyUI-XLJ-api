@@ -1,8 +1,8 @@
 {
   "id": "grok-edit-20260705",
   "revision": 0,
-  "last_node_id": 7,
-  "last_link_id": 6,
+  "last_node_id": 10,
+  "last_link_id": 9,
   "nodes": [
     {
       "id": 1,
@@ -15,7 +15,7 @@
       "inputs": [],
       "outputs": [],
       "properties": {
-        "text": "Grok Imagine 视频编辑（V2V）\n━━━━━━━━━━━━━━━━━━━━\n基于 xAI Grok Imagine 的 AI 视频编辑\n输入源视频 + 文字描述，AI 自动完成编辑\n\n限制：源视频最长约 8.7 秒，输出最高 720p"
+        "text": "Grok Imagine 视频编辑（V2V）\n━━━━━━━━━━━━━━━━━━━━\n基于 xAI Grok Imagine 的 AI 视频编辑\n输入源视频 + 参考图 + 文字描述，AI 自动完成编辑\n\n限制：源视频最长约 8.7 秒，输出最高 720p"
       },
       "widgets_values": []
     },
@@ -74,12 +74,59 @@
       "widgets_values": {}
     },
     {
+      "id": 10,
+      "type": "LoadImage",
+      "pos": [-1327, -21],
+      "size": [270, 314],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {"name": "image", "type": "COMBO", "widget": {"name": "image"}, "link": null},
+        {"name": "upload", "type": "IMAGEUPLOAD", "widget": {"name": "upload"}, "link": null}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [9]},
+        {"name": "MASK", "type": "MASK", "links": null}
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": ["", "image"]
+    },
+    {
+      "id": 9,
+      "type": "XLJUploadToImageHost",
+      "pos": [-982, -48],
+      "size": [270, 150],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"name": "image", "type": "IMAGE", "link": 9},
+        {"name": "upload_url", "shape": 7, "type": "STRING", "widget": {"name": "upload_url"}, "link": null},
+        {"name": "format", "shape": 7, "type": "COMBO", "widget": {"name": "format"}, "link": null},
+        {"name": "quality", "shape": 7, "type": "INT", "widget": {"name": "quality"}, "link": null},
+        {"name": "timeout", "shape": 7, "type": "INT", "widget": {"name": "timeout"}, "link": null}
+      ],
+      "outputs": [
+        {"name": "图片 URL", "type": "STRING", "links": [8]},
+        {"name": "创建时间", "type": "STRING", "links": null}
+      ],
+      "properties": {
+        "Node name for S&R": "XLJUploadToImageHost",
+        "widget_ue_connectable": {}
+      },
+      "widgets_values": ["", "jpeg", 100, 30]
+    },
+    {
       "id": 6,
       "type": "XLJUploadVideo",
       "pos": [-690, 480],
       "size": [270, 150],
       "flags": {},
-      "order": 3,
+      "order": 4,
       "mode": 0,
       "inputs": [
         {"name": "video", "shape": 7, "type": "IMAGE", "link": null},
@@ -94,7 +141,6 @@
         {"name": "文件名", "type": "STRING", "links": null}
       ],
       "properties": {
-        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
         "Node name for S&R": "XLJUploadVideo",
         "widget_ue_connectable": {"video": true, "fps": true, "upload_url": true, "timeout": true}
       },
@@ -104,26 +150,29 @@
       "id": 3,
       "type": "XLJGrokCreateEditVideo",
       "pos": [-200, 60],
-      "size": [400, 220],
+      "size": [400, 260],
       "flags": {},
-      "order": 4,
+      "order": 5,
       "mode": 0,
       "inputs": [
         {"name": "prompt", "type": "STRING", "widget": {"name": "prompt"}, "link": 1},
         {"name": "video_url", "type": "STRING", "widget": {"name": "video_url"}, "link": 5},
         {"name": "model", "shape": 7, "type": "COMBO", "widget": {"name": "model"}, "link": null},
-        {"name": "api_key", "type": "STRING", "widget": {"name": "api_key"}, "link": null}
+        {"name": "api_key", "type": "STRING", "widget": {"name": "api_key"}, "link": null},
+        {"name": "image_1", "shape": 7, "type": "STRING", "widget": {"name": "image_1"}, "link": 8},
+        {"name": "image_2", "shape": 7, "type": "STRING", "widget": {"name": "image_2"}, "link": null},
+        {"name": "image_3", "shape": 7, "type": "STRING", "widget": {"name": "image_3"}, "link": null},
+        {"name": "image_4", "shape": 7, "type": "STRING", "widget": {"name": "image_4"}, "link": null}
       ],
       "outputs": [
         {"name": "任务 ID", "type": "STRING", "links": [2]},
         {"name": "状态", "type": "STRING", "links": null}
       ],
       "properties": {
-        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
         "Node name for S&R": "XLJGrokCreateEditVideo",
         "widget_ue_connectable": {"prompt": true, "video_url": true, "api_key": true}
       },
-      "widgets_values": ["", "", "grok-imagine-video", ""]
+      "widgets_values": ["", "", "grok-imagine-video", "", "", "", "", ""]
     },
     {
       "id": 4,
@@ -131,7 +180,7 @@
       "pos": [290, 60],
       "size": [290, 230],
       "flags": {},
-      "order": 5,
+      "order": 6,
       "mode": 0,
       "inputs": [
         {"name": "task_id", "type": "STRING", "widget": {"name": "task_id"}, "link": 2},
@@ -147,7 +196,6 @@
         {"name": "增强提示词", "type": "STRING", "links": null}
       ],
       "properties": {
-        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
         "Node name for S&R": "XLJGrokQueryVideo",
         "widget_ue_connectable": {"task_id": true, "api_key": true, "wait": true, "poll_interval_sec": true, "timeout_sec": true}
       },
@@ -159,7 +207,7 @@
       "pos": [630, 60],
       "size": [290, 200],
       "flags": {},
-      "order": 6,
+      "order": 7,
       "mode": 0,
       "inputs": [
         {"name": "video_url", "type": "STRING", "widget": {"name": "video_url"}, "link": 4},
@@ -172,7 +220,6 @@
         {"name": "状态", "type": "STRING", "links": null}
       ],
       "properties": {
-        "aux_id": "weiqing1987/ComfyUI-XLJ-api",
         "Node name for S&R": "XLJDownloadVideo",
         "widget_ue_connectable": {"video_url": true, "save_dir": true, "filename": true, "timeout": true}
       },
@@ -184,6 +231,8 @@
     [2, 3, 0, 4, 0, "STRING"],
     [4, 4, 2, 5, 0, "STRING"],
     [5, 6, 0, 3, 1, "STRING"],
+    [8, 9, 0, 3, 4, "STRING"],
+    [9, 10, 0, 9, 0, "IMAGE"],
     [11, 8, 3, 6, 1, "VHS_VIDEOINFO"]
   ],
   "groups": [
@@ -199,8 +248,8 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.8,
-      "offset": [500, 200]
+      "scale": 0.75,
+      "offset": [600, 200]
     },
     "frontendVersion": "1.37.11"
   },
