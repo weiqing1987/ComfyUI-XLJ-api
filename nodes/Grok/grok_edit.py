@@ -18,11 +18,12 @@ session = requests.Session()
 session.trust_env = False
 
 
-def _build_edit_payload(model, prompt, video_url, image_1, image_2, image_3, image_4):
+def _build_edit_payload(model, prompt, video_url, aspect_ratio, image_1, image_2, image_3, image_4):
     """构建视频编辑请求 payload"""
     payload = {
         "model": model,
         "prompt": prompt,
+        "aspect_ratio": aspect_ratio,
         "video": {
             "url": video_url.strip(),
         },
@@ -86,6 +87,10 @@ class XLJGrokCreateEditVideo:
                     "default": "grok-imagine-video",
                     "tooltip": "模型，grok-imagine-video 支持视频编辑"
                 }),
+                "aspect_ratio": (["16:9", "9:16", "1:1", "2:3", "3:2"], {
+                    "default": "16:9",
+                    "tooltip": "视频宽高比"
+                }),
                 "api_key": ("STRING", {
                     "default": "",
                     "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"
@@ -100,6 +105,7 @@ class XLJGrokCreateEditVideo:
             "prompt": "编辑提示词",
             "video_url": "视频 URL",
             "model": "模型",
+            "aspect_ratio": "宽高比",
             "api_key": "API 密钥",
             **_IMAGE_LABELS,
         }
@@ -109,7 +115,7 @@ class XLJGrokCreateEditVideo:
     FUNCTION = "create"
     CATEGORY = "XLJ/Grok"
 
-    def create(self, prompt, video_url, model="grok-imagine-video", api_key="",
+    def create(self, prompt, video_url, model="grok-imagine-video", aspect_ratio="16:9", api_key="",
                image_1="", image_2="", image_3="", image_4=""):
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
@@ -121,7 +127,7 @@ class XLJGrokCreateEditVideo:
 
         api_base = API_BASE
         headers = http_headers_json(api_key)
-        payload = _build_edit_payload(model, prompt, video_url, image_1, image_2, image_3, image_4)
+        payload = _build_edit_payload(model, prompt, video_url, aspect_ratio, image_1, image_2, image_3, image_4)
         endpoint = f"{api_base}/v1/videos/edits"
 
         print(f"[ComfyUI-XLJ-api] 信陵君 Grok Edit - 创建视频编辑任务")
@@ -183,6 +189,10 @@ class XLJGrokEditAndWait:
                     "default": "grok-imagine-video",
                     "tooltip": "模型"
                 }),
+                "aspect_ratio": (["16:9", "9:16", "1:1", "2:3", "3:2"], {
+                    "default": "16:9",
+                    "tooltip": "视频宽高比"
+                }),
                 "api_key": ("STRING", {
                     "default": "",
                     "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"
@@ -211,6 +221,7 @@ class XLJGrokEditAndWait:
             "prompt": "编辑提示词",
             "video_url": "视频 URL",
             "model": "模型",
+            "aspect_ratio": "宽高比",
             "api_key": "API 密钥",
             **_IMAGE_LABELS,
             "wait_timeout_sec": "等待超时",
@@ -223,12 +234,12 @@ class XLJGrokEditAndWait:
     CATEGORY = "XLJ/Grok"
     OUTPUT_NODE = True
 
-    def edit_and_wait(self, prompt, video_url, model="grok-imagine-video", api_key="",
+    def edit_and_wait(self, prompt, video_url, model="grok-imagine-video", aspect_ratio="16:9", api_key="",
                       image_1="", image_2="", image_3="", image_4="",
                       wait_timeout_sec=300, poll_interval_sec=5):
         creator = XLJGrokCreateEditVideo()
         task_id, create_status = creator.create(
-            prompt, video_url, model, api_key,
+            prompt, video_url, model, aspect_ratio, api_key,
             image_1, image_2, image_3, image_4,
         )
 
@@ -303,6 +314,10 @@ class XLJGrokEditAndSave:
                     "default": "grok-imagine-video",
                     "tooltip": "模型"
                 }),
+                "aspect_ratio": (["16:9", "9:16", "1:1", "2:3", "3:2"], {
+                    "default": "16:9",
+                    "tooltip": "视频宽高比"
+                }),
                 "api_key": ("STRING", {
                     "default": "",
                     "tooltip": "API 密钥（留空使用环境变量 XLJ_API_KEY）"
@@ -339,6 +354,7 @@ class XLJGrokEditAndSave:
             "prompt": "编辑提示词",
             "video_url": "视频 URL",
             "model": "模型",
+            "aspect_ratio": "宽高比",
             "api_key": "API 密钥",
             **_IMAGE_LABELS,
             "save_dir": "保存目录",
@@ -353,7 +369,7 @@ class XLJGrokEditAndSave:
     CATEGORY = "XLJ/Grok"
     OUTPUT_NODE = True
 
-    def edit_and_save(self, prompt, video_url, model="grok-imagine-video", api_key="",
+    def edit_and_save(self, prompt, video_url, model="grok-imagine-video", aspect_ratio="16:9", api_key="",
                       image_1="", image_2="", image_3="", image_4="",
                       save_dir="", filename="", wait_timeout_sec=300, poll_interval_sec=5):
         import os
@@ -363,6 +379,7 @@ class XLJGrokEditAndSave:
             prompt=prompt,
             video_url=video_url,
             model=model,
+            aspect_ratio=aspect_ratio,
             api_key=api_key,
             image_1=image_1, image_2=image_2, image_3=image_3, image_4=image_4,
             wait_timeout_sec=wait_timeout_sec,
