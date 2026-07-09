@@ -14,7 +14,7 @@ API 站点：`https://xinlingjunai.cn/`
 - ViduQ 文生视频 / 图生视频
 - Banana 图像生成 / 多轮对话编辑
 - Seedream 即梦图像生成
-- GPT-Image 图像生成 (gpt-image-2-all)
+- GPT-Image 图像生成 (gpt-image-2)
 - GPT 文本处理
 - 视频反推 (VideoReverse)
 - 查询任务状态
@@ -63,8 +63,8 @@ XLJ_API_KEY=your_api_key_here
 - `banana+参考图出图-API调用.json`
 - `seedream+文生图-API调用.json`
 - `seedream+参考图出图-API调用.json`
-- `gpt-image-2-all+文生图-API调用.json`
-- `gpt-image-2-all+图生图-API调用.json`
+- `gpt-image-2+文生图-API调用.json`
+- `gpt-image-2+图生图-API调用.json`
 - `gpt+文本处理-API调用.json`
 
 ## 节点列表
@@ -174,7 +174,6 @@ XLJ_API_KEY=your_api_key_here
 
 ### GPT-Image
 
-- `gpt-image-2-all` - 文生图/图生图
 - `gpt-image-2` - 文生图/图生图
 
 ## 常见问题

@@ -129,7 +129,7 @@
         "Node name for S&R": "XLJGPTImageImageToImage"
       },
       "widgets_values": [
-        "gpt-image-2-all",
+        "gpt-image-2",
         "将他们合并在一个图片里面",
         "1:1",
         "1K",

@@ -88,7 +88,8 @@ def _transcode_source_video_preserve_audio(source_path: Path, temp_path: Path, s
     except Exception:
         probe = None
     target_fps = 30
-    max_width = 720
+    min_dim = 720
+    max_dim = 2160
     src_w = int(source_width or 0)
     src_h = int(source_height or 0)
     if probe and probe.returncode == 0:
@@ -101,13 +102,17 @@ def _transcode_source_video_preserve_audio(source_path: Path, temp_path: Path, s
                     break
         except Exception:
             pass
-    if src_w > max_width:
-        target_w = max_width
-        target_h = max(2, int(round((src_h * target_w / src_w) / 2) * 2)) if src_h else -2
+    if src_w <= 0 or src_h <= 0:
+        raise RuntimeError('无法读取原视频分辨率')
+    if src_w < min_dim or src_h < min_dim:
+        scale = max(min_dim / src_w, min_dim / src_h)
+    elif src_w > max_dim or src_h > max_dim:
+        scale = min(max_dim / src_w, max_dim / src_h)
     else:
-        target_w = src_w if src_w else max_width
-        target_h = src_h if src_h and src_h % 2 == 0 else (src_h - 1 if src_h else -2)
-    vf = f'scale={target_w}:{target_h},fps={target_fps}' if target_h != -2 else f'scale={target_w}:-2,fps={target_fps}'
+        scale = 1.0
+    target_w = max(2, int(round(src_w * scale / 2) * 2))
+    target_h = max(2, int(round(src_h * scale / 2) * 2))
+    vf = f'scale={target_w}:{target_h}:flags=lanczos,fps={target_fps}'
     cmd = [
         'ffmpeg', '-y', '-i', str(source_path),
         '-vf', vf,
@@ -116,7 +121,7 @@ def _transcode_source_video_preserve_audio(source_path: Path, temp_path: Path, s
         '-movflags', '+faststart',
         str(temp_path)
     ]
-    print(f"[ComfyUI-XLJ-api] 信陵君 - 使用原视频保留音轨压缩：source={source_path}, target={target_w}x{target_h}, fps={target_fps}")
+    print(f"[ComfyUI-XLJ-api] 信陵君 - 使用原视频保留音轨压缩：source={source_path}, src={src_w}x{src_h}, target={target_w}x{target_h}, fps={target_fps}")
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
     if proc.returncode != 0:
         raise RuntimeError(f'ffmpeg 保留音轨压缩失败: {proc.stderr[:500]}')
@@ -358,14 +363,19 @@ class XLJUploadVideo:
 
         if not source_path:
             # 用 imageio-ffmpeg 编码（无法保留原音轨时，仅上传压缩视频）
-            target_fps = 12
-            max_width = 720
-            if w > max_width:
-                target_w = max_width
-                target_h = max(2, int(round((h * target_w / w) / 2) * 2))
+            target_fps = 30
+            min_dim = 720
+            max_dim = 2160
+            if w <= 0 or h <= 0:
+                raise RuntimeError('无法从帧数据读取视频分辨率')
+            if w < min_dim or h < min_dim:
+                scale = max(min_dim / w, min_dim / h)
+            elif w > max_dim or h > max_dim:
+                scale = min(max_dim / w, max_dim / h)
             else:
-                target_w = w
-                target_h = h if h % 2 == 0 else h - 1
+                scale = 1.0
+            target_w = max(2, int(round(w * scale / 2) * 2))
+            target_h = max(2, int(round(h * scale / 2) * 2))
             print(f"[ComfyUI-XLJ-api] 信陵君 - 压缩参数：src={w}x{h}, target={target_w}x{target_h}, fps={target_fps}")
             try:
                 import imageio
@@ -375,7 +385,7 @@ class XLJUploadVideo:
                     codec='libx264',
                     ffmpeg_params=['-vf', f'scale={target_w}:{target_h}', '-crf', '32', '-preset', 'veryfast', '-movflags', '+faststart']
                 )
-                step = max(1, int(round(24 / target_fps)))
+                step = 1
                 for idx, frame in enumerate(frames):
                     if idx % step == 0:
                         writer.append_data(frame)
@@ -387,7 +397,7 @@ class XLJUploadVideo:
                     import subprocess as _sp
                     cmd = ['ffmpeg', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
                            '-s', f'{w}x{h}', '-r', '24', '-i', '-',
-                           '-vf', f'scale={target_w}:{target_h},fps={target_fps}',
+                           '-vf', f'scale={target_w}:{target_h}:flags=lanczos,fps={target_fps}',
                            '-an', '-c:v', 'libx264', '-crf', '32', '-preset', 'veryfast',
                            '-movflags', '+faststart', str(temp_path)]
                     proc = _sp.Popen(cmd, stdin=_sp.PIPE, stderr=_sp.PIPE)
@@ -403,7 +413,7 @@ class XLJUploadVideo:
                         import cv2
                         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                         writer = cv2.VideoWriter(str(temp_path), fourcc, target_fps, (target_w, target_h))
-                        step = max(1, int(round(24 / target_fps)))
+                        step = 1
                         for idx, frame in enumerate(frames):
                             if idx % step == 0:
                                 resized = cv2.resize(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR), (target_w, target_h))

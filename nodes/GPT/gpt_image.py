@@ -25,7 +25,6 @@ session.trust_env = False
 
 
 GPT_IMAGE_MODELS = [
-    "gpt-image-2-all",
     "gpt-image-2",
 ]
 
@@ -386,7 +385,7 @@ class XLJGPTImageTextToImage:
             "prompt": full_prompt,
             "n": 1,
             "quality": quality,
-            "format": output_format,
+            "output_format": output_format,
         }
         if request_size:
             payload["size"] = request_size
@@ -403,7 +402,7 @@ class XLJGPTImageTextToImage:
         headers = http_headers_json(api_key)
 
         try:
-            resp = session.post(endpoint, headers=headers, data=json.dumps(payload), timeout=(30, 300))
+            resp = session.post(endpoint, headers=headers, data=json.dumps(payload), timeout=(30, 600))
             response_text = resp.text
             if resp.status_code >= 400:
                 raise RuntimeError(parse_error_message(response_text, resp.status_code))
