@@ -335,6 +335,9 @@ class XLJGPTImageTextToImage:
                 "style_preset": ("STRING", {"default": "", "tooltip": "风格补充词"}),
                 "output_format": (OUTPUT_FORMATS, {"default": "png", "tooltip": "输出格式"}),
             },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+            },
         }
 
     @classmethod
@@ -372,9 +375,13 @@ class XLJGPTImageTextToImage:
         seed=0,
         style_preset="",
         output_format="png",
+        unique_id=None,
     ):
+        start_ts = time.time()
+        retry_times = 1
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
+            emit_runtime_status(unique_id, "error", "API Key 为空", 0.0, 0, retry_times, 600)
             raise RuntimeError("API key is required")
 
         request_size = build_request_size(aspect_ratio, resolution)
@@ -401,25 +408,33 @@ class XLJGPTImageTextToImage:
         endpoint = f"{API_BASE}/v1/images/generations"
         headers = http_headers_json(api_key)
 
+        emit_runtime_status(unique_id, "running", "开始请求 GPT-Image", 0.0, 0, retry_times, 600)
+
         try:
+            emit_runtime_status(unique_id, "running", "请求中，等待 API 响应", time.time() - start_ts, 1, retry_times, 600)
             resp = session.post(endpoint, headers=headers, data=json.dumps(payload), timeout=(30, 600))
             response_text = resp.text
             if resp.status_code >= 400:
                 raise RuntimeError(parse_error_message(response_text, resp.status_code))
 
+            emit_runtime_status(unique_id, "running", "解析图片", time.time() - start_ts, 1, retry_times, 600)
             response_data = json.loads(response_text)
             image_base64 = extract_image_base64(response_data)
             image_tensor = base64_to_tensor(image_base64)
             saved_path = save_generated_image_to_output(base64_to_pil(image_base64), "gpt_text2img")
+            elapsed = time.time() - start_ts
             status = (
                 f"model: {model_name} | ratio: {aspect_ratio} | resolution: {resolution} | size: {request_size} | "
-                f"quality: {quality} | format: {output_format}"
+                f"quality: {quality} | format: {output_format} | elapsed: {elapsed:.1f}s"
             )
             if int(seed or 0) != 0:
                 status += f" | seed_input: {int(seed)} (not sent)"
             status += f" | saved: {saved_path}"
+            emit_runtime_status(unique_id, "success", f"生成完成 ({elapsed:.1f}s)", elapsed, 1, retry_times, 600)
             return (image_tensor, status)
         except Exception as exc:
+            elapsed = time.time() - start_ts
+            emit_runtime_status(unique_id, "error", str(exc), elapsed, 1, retry_times, 600)
             raise RuntimeError(f"GPT-Image text-to-image failed: {exc}")
 
 
