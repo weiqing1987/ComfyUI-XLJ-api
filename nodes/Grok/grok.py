@@ -36,9 +36,12 @@ class XLJGrokCreateVideo:
                     "default": "1080p",
                     "tooltip": "视频分辨率"
                 }),
-                "duration": (["5", "8"], {
-                    "default": "5",
-                    "tooltip": "视频时长（秒），grok-imagine-video 固定为 5 秒"
+                "duration": ("INT", {
+                    "default": 5,
+                    "min": 1,
+                    "max": 15,
+                    "step": 1,
+                    "tooltip": "视频时长（秒），范围 1-15 秒"
                 }),
                 "api_key": ("STRING", {
                     "default": "",
@@ -149,7 +152,7 @@ class XLJGrokCreateVideo:
     FUNCTION = "create"
     CATEGORY = "XLJ/Grok"
 
-    def create(self, prompt, model, aspect_ratio, resolution, duration="5", api_key="", api_base="",
+    def create(self, prompt, model, aspect_ratio, resolution, duration=5, api_key="", api_base="",
                image_1="", image_2="", image_3="", image_4="",
                image_5="", image_6="", image_7="", image_8="",
                image_urls="", motion_mode="", style="", sound_effect_switch=False, seed=0):
@@ -451,9 +454,12 @@ class XLJGrokCreateAndWait:
                     "default": "1080p",
                     "tooltip": "视频分辨率"
                 }),
-                "duration": (["5", "8"], {
-                    "default": "5",
-                    "tooltip": "视频时长（秒），grok-imagine-video 固定为 5 秒"
+                "duration": ("INT", {
+                    "default": 5,
+                    "min": 1,
+                    "max": 15,
+                    "step": 1,
+                    "tooltip": "视频时长（秒），范围 1-15 秒"
                 }),
                 "api_key": ("STRING", {
                     "default": "",
@@ -573,7 +579,7 @@ class XLJGrokCreateAndWait:
     CATEGORY = "XLJ/Grok"
     OUTPUT_NODE = True
 
-    def create_and_wait(self, prompt, model, aspect_ratio, resolution, duration="5", api_key="",
+    def create_and_wait(self, prompt, model, aspect_ratio, resolution, duration=5, api_key="",
                         image_1="", image_2="", image_3="", image_4="",
                         image_5="", image_6="", image_7="", image_8="",
                         image_urls="", motion_mode="", style="", sound_effect_switch=False, seed=0,
