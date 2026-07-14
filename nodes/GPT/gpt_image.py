@@ -21,7 +21,6 @@ from ..xlj_utils import API_BASE, env_or, http_headers_json, to_mask_rgba_pil_fr
 
 
 session = requests.Session()
-session.trust_env = False
 
 
 GPT_IMAGE_MODELS = [
