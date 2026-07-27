@@ -25,6 +25,7 @@ session = requests.Session()
 
 GPT_IMAGE_MODELS = [
     "gpt-image-2",
+    "gpt-image-2-c",
 ]
 
 ASPECT_RATIO_LABELS = [
