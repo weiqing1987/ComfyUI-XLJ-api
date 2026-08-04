@@ -22,8 +22,8 @@ class XLJMiniMaxH3UploadVideo:
             "timeout_seconds": ("INT", {"default": 300, "min": 10, "max": 1800}),
         }}
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("video_url", "upload_info")
+    RETURN_TYPES = ("STRING", "FLOAT", "STRING")
+    RETURN_NAMES = ("video_url", "source_duration", "upload_info")
     FUNCTION = "upload"
     CATEGORY = "XLJ/MiniMax H3"
 
@@ -35,6 +35,10 @@ class XLJMiniMaxH3UploadVideo:
             with tempfile.NamedTemporaryFile(prefix="minimax_h3_", suffix=".mp4", delete=False) as handle:
                 temp_name = handle.name
             video.save_to(temp_name)
+            try:
+                source_duration = float(video.get_duration())
+            except Exception:
+                source_duration = 5.0
             path = Path(temp_name)
             if not path.is_file() or path.stat().st_size < 1024:
                 raise RuntimeError("VIDEO 编码为空或过小")
@@ -50,7 +54,7 @@ class XLJMiniMaxH3UploadVideo:
             url = self._find_url(data)
             if not url:
                 raise RuntimeError("图床响应中没有 URL：" + json.dumps(data, ensure_ascii=False))
-            return (url, json.dumps({"url": url, "response": data}, ensure_ascii=False))
+            return (url, source_duration, json.dumps({"url": url, "source_duration": source_duration, "response": data}, ensure_ascii=False))
         finally:
             if temp_name:
                 try:

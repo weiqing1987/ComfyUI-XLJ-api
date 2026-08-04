@@ -27,7 +27,7 @@ class XLJMiniMaxH3Regenerate2K:
         }, "optional": {
             "first_frame_url": ("STRING", {"default": ""}),
             "last_frame_url": ("STRING", {"default": ""}),
-            "duration": ("INT", {"default": 5, "min": 1, "max": 10}),
+            "source_duration": ("FLOAT", {"default": 0.0, "min": 0.1, "max": 60.0, "tooltip": "连接专用图床的 source_duration；2K 保持原视频时长"}),
             "ratio": (["adaptive", "16:9", "9:16", "1:1"], {"default": "adaptive"}),
             "api_base": ("STRING", {"default": "https://api.minimaxi.com"}),
             "poll_interval": ("FLOAT", {"default": 5.0, "min": 1.0, "max": 60.0}),
@@ -92,7 +92,7 @@ class XLJMiniMaxH3Regenerate2K:
         raise TimeoutError(f"MiniMax H3 查询超时（{timeout} 秒），task_id={task_id}")
 
     def generate(self, base_video_url, prompt, api_key, first_frame_url="", last_frame_url="",
-                 duration=5, ratio="adaptive", api_base="https://api.minimaxi.com",
+                 source_duration=0.0, ratio="adaptive", api_base="https://api.minimaxi.com",
                  poll_interval=5.0, timeout_seconds=1800):
         key = str(api_key or os.getenv("MINIMAX_API_KEY", "")).strip()
         if not key:
@@ -100,8 +100,9 @@ class XLJMiniMaxH3Regenerate2K:
         base = api_base.rstrip("/")
         session = requests.Session()
         headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
+        duration = max(1, min(60, int(round(float(source_duration or 5.0)))))
         context = {"model": "MiniMax-H3", "content": self._content(prompt, first_frame_url.strip(), last_frame_url.strip()),
-                   "duration": int(duration), "ratio": ratio}
+                   "duration": duration, "ratio": ratio}
         response = session.post(f"{base}/v2/h3_context_ir", headers=headers, json=context, timeout=120)
         response.raise_for_status()
         context_data = response.json()
