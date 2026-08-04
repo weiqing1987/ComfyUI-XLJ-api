@@ -5,10 +5,16 @@ The API calls intentionally bypass XLJ's proxy and use api.minimaxi.com.
 import base64
 import json
 import os
+import tempfile
 import time
 from pathlib import Path
 
 import requests
+
+try:
+    from comfy_api.latest import VideoFromFile
+except Exception:
+    VideoFromFile = None
 
 
 class XLJMiniMaxH3Regenerate2K:
@@ -28,8 +34,8 @@ class XLJMiniMaxH3Regenerate2K:
             "timeout_seconds": ("INT", {"default": 1800, "min": 30, "max": 7200}),
         }}
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("video_url", "task_info")
+    RETURN_TYPES = ("VIDEO", "STRING", "STRING")
+    RETURN_NAMES = ("video", "video_url", "task_info")
     FUNCTION = "generate"
     CATEGORY = "XLJ/MiniMax H3"
 
@@ -62,12 +68,19 @@ class XLJMiniMaxH3Regenerate2K:
     def _poll(self, session, base, key, task_id, interval, timeout):
         end = time.time() + timeout
         headers = {"Authorization": "Bearer " + key}
+        try:
+            import comfy.utils
+            pbar = comfy.utils.ProgressBar(100)
+        except Exception:
+            pbar = None
         while time.time() < end:
             response = session.get(f"{base}/v2/query/video_generation/{task_id}", headers=headers, timeout=60)
             response.raise_for_status()
             data = response.json()
             task = data.get("task", data)
             status = str(task.get("status", data.get("status", ""))).upper()
+            if pbar is not None:
+                pbar.update_absolute(min(99, pbar.current + 5))
             if status in {"SUCCEEDED", "SUCCESS", "COMPLETED"}:
                 url = task.get("content", {}).get("url") or data.get("content", {}).get("url")
                 if not url:
@@ -107,4 +120,15 @@ class XLJMiniMaxH3Regenerate2K:
         if not regen_id:
             raise RuntimeError("2K 重生成未返回 task_id：" + json.dumps(regen_data, ensure_ascii=False))
         url, result = self._poll(session, base, key, regen_id, poll_interval, timeout_seconds)
-        return (url, json.dumps({"context_task_id": context_id, "regeneration_task_id": regen_id, "response": result}, ensure_ascii=False))
+        if VideoFromFile is None:
+            raise RuntimeError("当前 ComfyUI 不支持 VIDEO 输出，请升级到包含 VideoFromFile 的版本")
+        output_path = Path(tempfile.gettempdir()) / f"minimax_h3_2k_{regen_id}.mp4"
+        with session.get(url, stream=True, timeout=180) as download:
+            download.raise_for_status()
+            with output_path.open("wb") as stream:
+                for chunk in download.iter_content(1024 * 1024):
+                    if chunk:
+                        stream.write(chunk)
+        video = VideoFromFile(str(output_path))
+        info = json.dumps({"context_task_id": context_id, "regeneration_task_id": regen_id, "response": result}, ensure_ascii=False)
+        return (video, url, info)
