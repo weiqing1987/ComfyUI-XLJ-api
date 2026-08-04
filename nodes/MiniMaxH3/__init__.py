@@ -8,7 +8,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "XLJMiniMaxH3ContextIR": "MiniMax H3 官方·Context-IR提示词增强",
+    "XLJMiniMaxH3ContextIR": "MiniMax H3 Context-IR（提示词增强）",
     "XLJMiniMaxH3Regenerate2K": "MiniMax H3 官方直连·2K视频增强",
     "XLJMiniMaxH3UploadVideo": "MiniMax H3 专用视频图床",
 }

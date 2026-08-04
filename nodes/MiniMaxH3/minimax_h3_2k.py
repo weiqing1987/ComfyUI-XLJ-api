@@ -39,7 +39,6 @@ class XLJMiniMaxH3ContextIR:
     CATEGORY = "XLJ/MiniMax H3"
 
     @staticmethod
-    @staticmethod
     def _content(prompt, first, last):
         content = [{"type": "text", "text": prompt}]
         if first:
