@@ -133,7 +133,16 @@ class XLJMiniMaxH3Regenerate2K:
     def INPUT_TYPES(cls):
         return {"required": {
             "base_video_url": ("STRING", {"multiline": False, "default": ""}),
-            "context": ("MINIMAX_H3_CONTEXT",),
+            "prompt": ("STRING", {"multiline": True, "default": ""}),
+            "api_key": ("STRING", {"default": "", "multiline": False}),
+        }, "optional": {
+            "first_frame_url": ("STRING", {"default": ""}),
+            "last_frame_url": ("STRING", {"default": ""}),
+            "source_duration": ("FLOAT", {"default": 5.0, "min": 0.1, "max": 60.0}),
+            "ratio": (["adaptive", "21:9", "16:9", "4:3", "1:1", "3:4", "9:16"], {"default": "adaptive"}),
+            "api_base": ("STRING", {"default": "https://api.minimaxi.com"}),
+            "poll_interval": ("INT", {"default": 5, "min": 1, "max": 60}),
+            "timeout_seconds": ("INT", {"default": 1800, "min": 30, "max": 7200}),
         }}
 
     RETURN_TYPES = ("VIDEO", "STRING", "STRING")
@@ -154,14 +163,36 @@ class XLJMiniMaxH3Regenerate2K:
         mime = "video/mp4" if path.suffix.lower() == ".mp4" else "video/*"
         return "data:%s;base64,%s" % (mime, base64.b64encode(path.read_bytes()).decode())
 
-    def generate(self, base_video_url, context):
-        if not isinstance(context, dict) or not context.get("api_key"):
-            raise ValueError("请连接 XLJMiniMaxH3ContextIR 的 context 输出，不能直接运行 2K 节点")
-        key = str(context["api_key"]).strip()
-        base = str(context.get("api_base") or "https://api.minimaxi.com").rstrip("/")
+    def generate(self, base_video_url, prompt="", api_key="", first_frame_url="", last_frame_url="",
+                 source_duration=5.0, ratio="adaptive", api_base="https://api.minimaxi.com",
+                 poll_interval=5, timeout_seconds=1800):
+        key = str(api_key or os.getenv("MINIMAX_API_KEY", "")).strip()
+        if not key:
+            raise ValueError("请填写 MiniMax API Key")
+        base = str(api_base or "https://api.minimaxi.com").rstrip("/")
         session = requests.Session()
         headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
-        content = list(context.get("content") or [])
+        duration = int(round(float(source_duration or 5.0)))
+        if duration < 4 or duration > 15:
+            raise ValueError(f"MiniMax H3 官方 Context-IR 只支持 4~15 秒，当前 source_duration={source_duration}")
+        prompt = str(prompt or "").strip()
+        if not prompt:
+            raise ValueError("Prompt 不能为空")
+        first = str(first_frame_url or "").strip()
+        last = str(last_frame_url or "").strip()
+        if not (first or last) and ratio == "adaptive":
+            raise ValueError("纯文本 Context-IR 不能使用 adaptive，请选择具体画幅比例")
+        context_payload = {"model": "MiniMax-H3", "content": XLJMiniMaxH3ContextIR._content(prompt, first, last), "duration": duration, "ratio": ratio}
+        response = session.post(f"{base}/v2/h3_context_ir", headers=headers, json=context_payload, timeout=120)
+        XLJMiniMaxH3ContextIR._raise_for_status(response, "Context-IR")
+        context_data = response.json()
+        context_id = XLJMiniMaxH3ContextIR._task_id(context_data)
+        if not context_id:
+            raise RuntimeError("Context-IR 未返回 task_id：" + json.dumps(context_data, ensure_ascii=False))
+        helper = XLJMiniMaxH3ContextIR()
+        _, context_result = helper._poll(session, base, key, context_id, int(poll_interval), int(timeout_seconds), require_video_url=False)
+        expanded = context_result.get("task", {}).get("content", {}).get("prompt") or prompt
+        content = XLJMiniMaxH3ContextIR._content(expanded, first, last)
         content.append({"type": "video_url", "video_url": {"url": self._video_url(base_video_url)}, "role": "base_video"})
         regen = {"model": "MiniMax-H3", "content": content, "resolution": "2K"}
         response = session.post(f"{base}/v2/video_regeneration", headers=headers, json=regen, timeout=120)
@@ -170,10 +201,7 @@ class XLJMiniMaxH3Regenerate2K:
         regen_id = XLJMiniMaxH3ContextIR._task_id(regen_data)
         if not regen_id:
             raise RuntimeError("2K 重生成未返回 task_id：" + json.dumps(regen_data, ensure_ascii=False))
-        helper = XLJMiniMaxH3ContextIR()
-        # Keep these internal so old ComfyUI workflow widgets cannot inject
-        # malformed optional values before execution.
-        url, result = helper._poll(session, base, key, regen_id, 5.0, 1800)
+        url, result = helper._poll(session, base, key, regen_id, int(poll_interval), int(timeout_seconds))
         if VideoFromFile is None:
             raise RuntimeError("当前 ComfyUI 不支持 VIDEO 输出，请升级到包含 VideoFromFile 的版本")
         output_path = Path(tempfile.gettempdir()) / f"minimax_h3_2k_{regen_id}.mp4"
@@ -184,5 +212,5 @@ class XLJMiniMaxH3Regenerate2K:
                     if chunk:
                         stream.write(chunk)
         video = VideoFromFile(str(output_path))
-        info = json.dumps({"context_task_id": context.get("context_task_id"), "regeneration_task_id": regen_id, "response": result}, ensure_ascii=False)
+        info = json.dumps({"context_task_id": context_id, "regeneration_task_id": regen_id, "response": result}, ensure_ascii=False)
         return (video, url, info)
