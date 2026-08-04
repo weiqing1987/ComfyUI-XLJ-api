@@ -118,6 +118,21 @@ XLJ_API_KEY=your_api_key_here
 - `XLJDownloadVideo`
 - `XLJCSVBatchReader`
 
+### MiniMax H3 官方直连
+
+- `XLJMiniMaxH3UploadVideo` - MiniMax H3 专用视频图床，输出公网视频 URL 和源视频时长
+- `XLJMiniMaxH3ContextIR` - 使用 MiniMax 官方 H3 Context-IR API 验证 Key，并生成增强后的最终 prompt
+- `XLJMiniMaxH3Regenerate2K` - 使用 Context-IR 输出对符合 H3 768P 规格的视频进行 2K 再生成；API Key 由 Context 输出携带，节点本身不再填写 Key
+
+推荐连接：
+
+```text
+CreateVideo -> XLJMiniMaxH3UploadVideo -> XLJMiniMaxH3Regenerate2K -> SaveVideo
+                                  \-> XLJMiniMaxH3ContextIR -/
+```
+
+`XLJMiniMaxH3ContextIR` 的 `duration` 必须对应源视频时长，并且官方只允许 4~15 秒；纯文本输入时 `ratio` 不能使用 `adaptive`。2K 再生成不是通用视频超分，只支持 MiniMax H3 官方生成的 768P 视频。
+
 ## 支持模型
 
 ### Grok
