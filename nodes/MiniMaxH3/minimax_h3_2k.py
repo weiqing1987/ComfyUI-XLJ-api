@@ -134,9 +134,6 @@ class XLJMiniMaxH3Regenerate2K:
         return {"required": {
             "base_video_url": ("STRING", {"multiline": False, "default": ""}),
             "context": ("MINIMAX_H3_CONTEXT",),
-        }, "optional": {
-            "poll_interval": ("FLOAT", {"default": 5.0, "min": 1.0, "max": 60.0}),
-            "timeout_seconds": ("INT", {"default": 1800, "min": 30, "max": 7200}),
         }}
 
     RETURN_TYPES = ("VIDEO", "STRING", "STRING")
@@ -157,7 +154,7 @@ class XLJMiniMaxH3Regenerate2K:
         mime = "video/mp4" if path.suffix.lower() == ".mp4" else "video/*"
         return "data:%s;base64,%s" % (mime, base64.b64encode(path.read_bytes()).decode())
 
-    def generate(self, base_video_url, context, poll_interval=5.0, timeout_seconds=1800):
+    def generate(self, base_video_url, context):
         if not isinstance(context, dict) or not context.get("api_key"):
             raise ValueError("请连接 XLJMiniMaxH3ContextIR 的 context 输出，不能直接运行 2K 节点")
         key = str(context["api_key"]).strip()
@@ -174,7 +171,9 @@ class XLJMiniMaxH3Regenerate2K:
         if not regen_id:
             raise RuntimeError("2K 重生成未返回 task_id：" + json.dumps(regen_data, ensure_ascii=False))
         helper = XLJMiniMaxH3ContextIR()
-        url, result = helper._poll(session, base, key, regen_id, poll_interval, timeout_seconds)
+        # Keep these internal so old ComfyUI workflow widgets cannot inject
+        # malformed optional values before execution.
+        url, result = helper._poll(session, base, key, regen_id, 5.0, 1800)
         if VideoFromFile is None:
             raise RuntimeError("当前 ComfyUI 不支持 VIDEO 输出，请升级到包含 VideoFromFile 的版本")
         output_path = Path(tempfile.gettempdir()) / f"minimax_h3_2k_{regen_id}.mp4"
