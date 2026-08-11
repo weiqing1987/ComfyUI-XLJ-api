@@ -37,7 +37,7 @@ class XLJBananaCreateImage:
 
     @classmethod
     def INPUT_TYPES(cls):
-        model_list = ["gemini-3-pro-image-preview", "gemini-2.5-flash-image", "gemini-3.1-flash-image-preview"]
+        model_list = ["gemini-3.1-flash-image-preview", "gemini-2.5-flash-image", "gemini-3-pro-image-preview"]
         return {
             "required": {
                 "model_name": (model_list, {
@@ -323,7 +323,7 @@ class XLJBananaMultiTurnChat:
 
     @classmethod
     def INPUT_TYPES(cls):
-        model_list = ["gemini-3-pro-image-preview", "gemini-2.5-flash-image", "gemini-3.1-flash-image-preview"]
+        model_list = ["gemini-3.1-flash-image-preview", "gemini-2.5-flash-image", "gemini-3-pro-image-preview"]
         return {
             "required": {
                 "model_name": (model_list, {
