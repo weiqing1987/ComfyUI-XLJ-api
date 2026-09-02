@@ -155,9 +155,35 @@ def base64_to_pil(base64_str: str) -> Image.Image:
 
 
 def base64_to_tensor(base64_str: str) -> torch.Tensor:
-    pil_image = base64_to_pil(base64_str)
+    return pil_to_tensor(base64_to_pil(base64_str))
+
+
+def pil_to_tensor(pil_image: Image.Image) -> torch.Tensor:
     image_np = np.array(pil_image).astype(np.float32) / 255.0
     return torch.from_numpy(image_np)[None,]
+
+
+def parse_pixel_size(size: str):
+    match = re.fullmatch(r"(\d+)x(\d+)", str(size or "").strip().lower())
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def resize_image_to_request(pil_image: Image.Image, request_size: str):
+    target_size = parse_pixel_size(request_size)
+    if target_size is None or pil_image.size == target_size:
+        return pil_image, None
+
+    # Some compatible endpoints charge for the requested tier but return a
+    # smaller raster. Keep the requested canvas size for downstream ComfyUI
+    # nodes while exposing the server size in the status text.
+    if pil_image.width < target_size[0] or pil_image.height < target_size[1]:
+        resampling = getattr(Image, "Resampling", Image).LANCZOS
+        original_size = pil_image.size
+        return pil_image.resize(target_size, resampling), original_size
+
+    return pil_image, None
 
 
 def comfy_image_to_pil_list(image_any):
@@ -210,13 +236,22 @@ def scale_size_to_constraints(width: int, height: int):
 
 
 def build_request_size(aspect_ratio: str, resolution: str) -> str:
-    if resolution == "auto" or aspect_ratio == "auto":
+    resolution = str(resolution or "auto").strip().upper()
+    aspect_ratio = str(aspect_ratio or "auto").strip()
+
+    if resolution == "AUTO":
         return "auto"
 
     ratio = parse_aspect_ratio(aspect_ratio)
     target = RESOLUTION_TARGETS.get(resolution)
-    if ratio is None or target is None:
+    if target is None:
         return "auto"
+
+    # An explicit resolution must not be discarded just because the ratio is
+    # automatic. Use the square target in that case; the API cannot express a
+    # resolution tier and an unconstrained aspect ratio in one size value.
+    if ratio is None:
+        ratio = 1.0
 
     multiple = SIZE_RULES["multiple"]
     min_pixels = SIZE_RULES["min_pixels"]
@@ -420,13 +455,17 @@ class XLJGPTImageTextToImage:
             emit_runtime_status(unique_id, "running", "解析图片", time.time() - start_ts, 1, retry_times, 600)
             response_data = json.loads(response_text)
             image_base64 = extract_image_base64(response_data)
-            image_tensor = base64_to_tensor(image_base64)
-            saved_path = save_generated_image_to_output(base64_to_pil(image_base64), "gpt_text2img")
+            output_pil = base64_to_pil(image_base64)
+            output_pil, server_size = resize_image_to_request(output_pil, request_size)
+            image_tensor = pil_to_tensor(output_pil)
+            saved_path = save_generated_image_to_output(output_pil, "gpt_text2img")
             elapsed = time.time() - start_ts
             status = (
                 f"model: {model_name} | ratio: {aspect_ratio} | resolution: {resolution} | size: {request_size} | "
                 f"quality: {quality} | format: {output_format} | elapsed: {elapsed:.1f}s"
             )
+            if server_size is not None:
+                status += f" | server_image_size: {server_size[0]}x{server_size[1]} | locally_resized: yes"
             if int(seed or 0) != 0:
                 status += f" | seed_input: {int(seed)} (not sent)"
             status += f" | saved: {saved_path}"
@@ -659,6 +698,11 @@ class XLJGPTImageImageToImage:
             if image_tensor is None:
                 raise RuntimeError(f"无法从响应提取图片: {json.dumps(data, ensure_ascii=False)[:300]}")
 
+            server_size = None
+            if output_pil is not None:
+                output_pil, server_size = resize_image_to_request(output_pil, size)
+                image_tensor = pil_to_tensor(output_pil)
+
             elapsed = time.time() - start_ts
             saved_path = ""
             if output_pil is not None:
@@ -667,6 +711,8 @@ class XLJGPTImageImageToImage:
                 f"model={model} | ratio={aspect_ratio} | resolution={resolution} | "
                 f"size={size} | elapsed={elapsed:.1f}s"
             )
+            if server_size is not None:
+                status += f" | server_image_size={server_size[0]}x{server_size[1]} | locally_resized=yes"
             if saved_path:
                 status += f" | saved: {saved_path}"
             emit_runtime_status(unique_id, "success", f"生成完成 ({elapsed:.1f}s)", elapsed, 1, retry_times, timeout_seconds)
