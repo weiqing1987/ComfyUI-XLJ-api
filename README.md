@@ -2,7 +2,7 @@
 
 信陵君 AI API 的 ComfyUI 节点插件。
 
-API 站点：`https://xinlingjunai.cn/`
+API 站点：`https://xinlingjunai.cn/`，同时支持 OpenLux：`https://api.openlux.ai/`
 
 导入工作流后，通常只需要填写 `api_key` 就可以直接使用。
 
@@ -36,9 +36,12 @@ pip install -r requirements.txt
 
 ## API 站点
 
-- API 网站：`https://xinlingjunai.cn/`
+- 默认 API 网站：`https://xinlingjunai.cn/`
+- OpenLux API 网站：`https://api.openlux.ai/`
+- GPT 文本和 GPT-Image 节点可在“API 站点”中选择“OpenLux”
+- 也可以通过环境变量 `XLJ_API_BASE=https://api.openlux.ai` 统一切换插件的默认 API 地址
 - 使用前请先准备可用的 `api_key`
-- 节点里的 `api_base` 请按你的实际接口配置填写
+- OpenLux 的模型列表和可用模型以你的账户权限为准
 
 ## API Key 配置
 
@@ -50,6 +53,7 @@ pip install -r requirements.txt
 
 ```env
 XLJ_API_KEY=your_api_key_here
+XLJ_API_BASE=https://api.openlux.ai
 ```
 
 ## 示例工作流
@@ -199,7 +203,7 @@ CreateVideo -> XLJMiniMaxH3UploadVideo -> XLJMiniMaxH3Regenerate2K -> SaveVideo
 
 ### 工作流导入后不能运行
 
-先确认插件版本是最新的，并确认 API 站点使用的是 `https://xinlingjunai.cn/`。
+先确认插件版本是最新的，并确认 API 站点与 API Key 属于同一服务商。
 
 ### API 调用失败
 
@@ -209,6 +213,7 @@ CreateVideo -> XLJMiniMaxH3UploadVideo -> XLJMiniMaxH3Regenerate2K -> SaveVideo
 
 - GitHub: `https://github.com/weiqing1987/ComfyUI-XLJ-api`
 - API Website: `https://xinlingjunai.cn/`
+- OpenLux: `https://api.openlux.ai/`
 
 ## License
 

@@ -18,7 +18,7 @@ from pathlib import Path
 
 import folder_paths
 
-from ..xlj_utils import env_or, http_headers_json, API_BASE
+from ..xlj_utils import API_SITE_OPTIONS, env_or, http_headers_json, resolve_api_base
 
 # 禁用代理
 session = requests.Session()
@@ -365,6 +365,10 @@ class XLJGPTTextProcessor:
                     "default": False,
                     "tooltip": "分段处理超长文本（一般不需要）"
                 }),
+                "api_site": (API_SITE_OPTIONS, {
+                    "default": API_SITE_OPTIONS[0],
+                    "tooltip": "API 站点",
+                }),
             }
         }
 
@@ -379,7 +383,8 @@ class XLJGPTTextProcessor:
             "extra_prompt": "额外提示",
             "temperature": "温度",
             "max_tokens": "最大 Token",
-            "enable_chunking": "启用分段"
+            "enable_chunking": "启用分段",
+            "api_site": "API 站点",
         }
 
     RETURN_TYPES = ("STRING", "STRING")
@@ -390,7 +395,8 @@ class XLJGPTTextProcessor:
 
     def process(self, model_name, system_prompt, user_prompt, api_key="",
                 text_input="", extra_prompt="",
-                temperature=0.7, max_tokens=8000, enable_chunking=False):
+                temperature=0.7, max_tokens=8000, enable_chunking=False,
+                api_site="自动（环境变量）"):
 
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
@@ -414,18 +420,19 @@ class XLJGPTTextProcessor:
         if len(chunks) > 1:
             print(f"[ComfyUI-XLJ-api] 信陵君 GPT 分段处理：{len(chunks)} 个片段")
             return self._process_chunks(model_name, system_prompt, api_key,
-                                        chunks, extra_prompt, temperature, max_tokens, doc_length)
+                                        chunks, extra_prompt, temperature, max_tokens, doc_length,
+                                        api_site)
 
         return self._process_single(model_name, system_prompt, api_key, doc_content,
-                                    extra_prompt, temperature, max_tokens, doc_length)
+                                    extra_prompt, temperature, max_tokens, doc_length, api_site)
 
     def _process_single(self, model_name, system_prompt, api_key, doc_content,
-                        extra_prompt, temperature, max_tokens, doc_length):
+                        extra_prompt, temperature, max_tokens, doc_length, api_site):
         user_content = f"以下是文档内容：\n\n---\n{doc_content}\n---\n"
         if extra_prompt and extra_prompt.strip():
             user_content += f"\n\n额外要求：{extra_prompt.strip()}"
 
-        endpoint = f"{API_BASE}/v1/chat/completions"
+        endpoint = f"{resolve_api_base(api_site)}/v1/chat/completions"
         headers = http_headers_json(api_key)
 
         messages = []
@@ -476,7 +483,7 @@ class XLJGPTTextProcessor:
         return (output_text, status_info)
 
     def _process_chunks(self, model_name, system_prompt, api_key, chunks,
-                        extra_prompt, temperature, max_tokens, doc_length):
+                        extra_prompt, temperature, max_tokens, doc_length, api_site):
         chunk_prompt = (system_prompt.strip() if system_prompt else "") + \
                        "\n\n注意：这是长文档的一部分，请只处理当前内容。"
 
@@ -497,7 +504,7 @@ class XLJGPTTextProcessor:
                 messages.append({"role": "system", "content": chunk_prompt})
             messages.append({"role": "user", "content": user_content})
 
-            endpoint = f"{API_BASE}/v1/chat/completions"
+            endpoint = f"{resolve_api_base(api_site)}/v1/chat/completions"
             headers = http_headers_json(api_key)
             payload = {
                 "model": model_name,

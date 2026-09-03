@@ -17,7 +17,14 @@ import requests
 import torch
 from PIL import Image
 
-from ..xlj_utils import API_BASE, env_or, http_headers_json, to_mask_rgba_pil_from_comfy, to_pil_from_comfy
+from ..xlj_utils import (
+    API_SITE_OPTIONS,
+    env_or,
+    http_headers_json,
+    resolve_api_base,
+    to_mask_rgba_pil_from_comfy,
+    to_pil_from_comfy,
+)
 
 
 session = requests.Session()
@@ -369,6 +376,7 @@ class XLJGPTImageTextToImage:
                 "seed": ("INT", {"default": 0, "min": 0, "max": 2147483647, "tooltip": "保留字段，当前接口不会实际发送"}),
                 "style_preset": ("STRING", {"default": "", "tooltip": "风格补充词"}),
                 "output_format": (OUTPUT_FORMATS, {"default": "png", "tooltip": "输出格式"}),
+                "api_site": (API_SITE_OPTIONS, {"default": API_SITE_OPTIONS[0], "tooltip": "API 站点"}),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -384,6 +392,7 @@ class XLJGPTImageTextToImage:
             "resolution": "输出分辨率",
             "quality": "质量",
             "api_key": "API 密钥",
+            "api_site": "API 站点",
             "system_prompt": "系统提示词",
             "negative_prompt": "负面提示词",
             "seed": "随机种子",
@@ -410,6 +419,7 @@ class XLJGPTImageTextToImage:
         seed=0,
         style_preset="",
         output_format="png",
+        api_site="自动（环境变量）",
         unique_id=None,
     ):
         start_ts = time.time()
@@ -440,7 +450,8 @@ class XLJGPTImageTextToImage:
         if int(seed or 0) != 0:
             print("[ComfyUI-XLJ-api] seed was provided but is not sent because the current API does not expose it.")
 
-        endpoint = f"{API_BASE}/v1/images/generations"
+        api_base = resolve_api_base(api_site)
+        endpoint = f"{api_base}/v1/images/generations"
         headers = http_headers_json(api_key)
 
         emit_runtime_status(unique_id, "running", "开始请求 GPT-Image", 0.0, 0, retry_times, 600)
@@ -462,7 +473,7 @@ class XLJGPTImageTextToImage:
             elapsed = time.time() - start_ts
             status = (
                 f"model: {model_name} | ratio: {aspect_ratio} | resolution: {resolution} | size: {request_size} | "
-                f"quality: {quality} | format: {output_format} | elapsed: {elapsed:.1f}s"
+                f"quality: {quality} | format: {output_format} | site: {api_base} | elapsed: {elapsed:.1f}s"
             )
             if server_size is not None:
                 status += f" | server_image_size: {server_size[0]}x{server_size[1]} | locally_resized: yes"
@@ -504,6 +515,7 @@ class XLJGPTImageImageToImage:
                 "image_input_9": ("IMAGE", {"tooltip": "参考图片 9"}),
                 "image_input_10": ("IMAGE", {"tooltip": "参考图片 10"}),
                 "image_mask": ("MASK", {"tooltip": "遮罩（透明区域=可编辑）"}),
+                "api_site": (API_SITE_OPTIONS, {"default": API_SITE_OPTIONS[0], "tooltip": "API 站点"}),
             },
             "hidden": {
                 "unique_id": "UNIQUE_ID",
@@ -519,6 +531,7 @@ class XLJGPTImageImageToImage:
             "resolution": "输出分辨率",
             "quality": "质量",
             "api_key": "API 密钥",
+            "api_site": "API 站点",
             "timeout_seconds": "超时(秒)",
             "background": "背景",
             "n": "生成图片张数",
@@ -564,6 +577,7 @@ class XLJGPTImageImageToImage:
         image_input_9=None,
         image_input_10=None,
         image_mask=None,
+        api_site="自动（环境变量）",
     ):
         start_ts = time.time()
         retry_times = 1
@@ -619,7 +633,8 @@ class XLJGPTImageImageToImage:
             except Exception as exc:
                 print(f"[ComfyUI-XLJ-api] GPT-Image mask ignored: {exc}")
 
-        endpoint = f"{API_BASE}/v1/images/edits"
+        api_base = resolve_api_base(api_site)
+        endpoint = f"{api_base}/v1/images/edits"
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {api_key}",
@@ -709,7 +724,7 @@ class XLJGPTImageImageToImage:
                 saved_path = save_generated_image_to_output(output_pil, "gpt_img2img")
             status = (
                 f"model={model} | ratio={aspect_ratio} | resolution={resolution} | "
-                f"size={size} | elapsed={elapsed:.1f}s"
+                f"size={size} | site={api_base} | elapsed={elapsed:.1f}s"
             )
             if server_size is not None:
                 status += f" | server_image_size={server_size[0]}x{server_size[1]} | locally_resized=yes"

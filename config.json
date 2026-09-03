@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "description": "信陵君 AI API ComfyUI 节点插件",
   "locked_api_base": "https://xinlingjunai.cn",
+  "supported_api_bases": {
+    "信陵君（默认）": "https://xinlingjunai.cn",
+    "OpenLux": "https://api.openlux.ai"
+  },
   "file_integrity": {
     "xlj_utils.py": {
       "algorithm": "SHA256",
-      "hash": "dbc6181991d2dca28d8c75829722c51ab5a9bee5984ed0fe0d30b47ec2a6b333",
-      "description": "API 地址锁定文件，禁止修改"
+      "hash": "6031a9c82574373132c0ae1224246122d2df753db5c07bd0d7ab23c109d5ce2d",
+      "description": "API 地址默认值及支持的备用站点"
     }
   },
   "author": "信陵君",

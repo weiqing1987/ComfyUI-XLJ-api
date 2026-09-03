@@ -45,12 +45,14 @@ ComfyUI-XLJ-api/
 
 ## 开发规范
 
-### 1. API 地址锁定
+### 1. API 地址
 
-所有节点必须使用 `API_BASE` 常量，定义在 `nodes/xlj_utils.py`：
+所有通用节点使用 `API_BASE` 常量，定义在 `nodes/xlj_utils.py`。默认地址保持为信陵君，也可以在启动 ComfyUI 前通过 `XLJ_API_BASE` 切换：
 ```python
-from ..xlj_utils import API_BASE  # 值为 "https://xinlingjunai.cn"
+from ..xlj_utils import API_BASE  # 默认值为 "https://xinlingjunai.cn"
 ```
+
+GPT 文本和 GPT-Image 节点支持 `API_SITE_OPTIONS` / `resolve_api_base`，可在节点中选择 OpenLux（`https://api.openlux.ai`）。
 
 ### 2. 日志前缀
 
@@ -128,7 +130,7 @@ POST /v1/chat/completions    # GPT 文本处理
 ## 测试
 
 ```bash
-# 验证节点加载
+# 验证默认 API 地址
 cd ComfyUI-XLJ-api
 python -c "import sys; sys.path.insert(0, '.'); from nodes.xlj_utils import API_BASE; print(API_BASE)"
 ```

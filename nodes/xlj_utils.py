@@ -9,8 +9,32 @@ import numpy as np
 import requests
 from PIL import Image
 
-# API 基础地址
-API_BASE = "https://xinlingjunai.cn"
+# API 基础地址。默认值保持兼容现有工作流，可通过 XLJ_API_BASE 切换整套插件。
+DEFAULT_API_BASE = "https://xinlingjunai.cn"
+API_SITE_OPTIONS = ["自动（环境变量）", "信陵君（默认）", "OpenLux"]
+API_SITE_BASES = {
+    "信陵君（默认）": DEFAULT_API_BASE,
+    "OpenLux": "https://api.openlux.ai",
+}
+
+
+def normalize_api_base(value: str) -> str:
+    return str(value or "").strip().rstrip("/")
+
+
+def resolve_api_base(site: str = "") -> str:
+    """Resolve a named site, a custom URL, or the XLJ_API_BASE override."""
+    site = str(site or "").strip()
+    if site in API_SITE_BASES:
+        return API_SITE_BASES[site]
+    if site.startswith(("http://", "https://")):
+        return normalize_api_base(site)
+
+    configured_base = normalize_api_base(os.environ.get("XLJ_API_BASE", ""))
+    return configured_base or DEFAULT_API_BASE
+
+
+API_BASE = resolve_api_base()
 
 def env_or(value: str, env_name: str) -> str:
     """优先使用参数，其次使用环境变量"""
