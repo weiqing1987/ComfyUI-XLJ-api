@@ -1,5 +1,5 @@
 """
-GPT 文本处理节点 - 信陵君 AI
+GPT 文本处理节点
 支持 txt/md/pdf/docx 文档读取和 GPT 文案处理
 
 使用方法：
@@ -91,7 +91,7 @@ def read_pdf_file(file_path: str) -> str:
     except ImportError:
         pass
     except Exception as e:
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT pdfplumber 读取失败：{e}")
+        print(f"[ComfyUI-XLJ-api] GPT pdfplumber 读取失败：{e}")
 
     try:
         from PyPDF2 import PdfReader
@@ -106,7 +106,7 @@ def read_pdf_file(file_path: str) -> str:
     except ImportError:
         pass
     except Exception as e:
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT PyPDF2 读取失败：{e}")
+        print(f"[ComfyUI-XLJ-api] GPT PyPDF2 读取失败：{e}")
 
     raise RuntimeError(
         "无法读取 PDF 文件。请安装：pip install pdfplumber"
@@ -124,7 +124,7 @@ def read_docx_file(file_path: str) -> str:
     except ImportError:
         pass
     except Exception as e:
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT python-docx 读取失败：{e}")
+        print(f"[ComfyUI-XLJ-api] GPT python-docx 读取失败：{e}")
 
     raise RuntimeError(
         "无法读取 DOCX 文件。请安装：pip install python-docx"
@@ -180,7 +180,7 @@ def read_epub_file(file_path: str) -> str:
     except ImportError:
         pass
     except Exception as e:
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT ebooklib 读取失败：{e}")
+        print(f"[ComfyUI-XLJ-api] GPT ebooklib 读取失败：{e}")
 
     raise RuntimeError("无法读取 EPUB 文件。请安装：pip install ebooklib")
 
@@ -261,7 +261,7 @@ class XLJDocumentLoader:
         if not os.path.exists(file_path):
             raise RuntimeError(f"文件不存在：{document}")
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT 读取文件：{file_path}")
+        print(f"[ComfyUI-XLJ-api] GPT 读取文件：{file_path}")
         try:
             doc_content, meta = read_document(file_path)
         except Exception as e:
@@ -277,7 +277,7 @@ class XLJDocumentLoader:
         )
         char_count = str(meta["char_count"])
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT 文档加载成功：{meta['file_name']} ({meta['char_count']} 字符)")
+        print(f"[ComfyUI-XLJ-api] GPT 文档加载成功：{meta['file_name']} ({meta['char_count']} 字符)")
 
         return (doc_content, file_info, char_count)
 
@@ -396,7 +396,7 @@ class XLJGPTTextProcessor:
     def process(self, model_name, system_prompt, user_prompt, api_key="",
                 text_input="", extra_prompt="",
                 temperature=0.7, max_tokens=8000, enable_chunking=False,
-                api_site="自动（环境变量）"):
+                api_site="海外站点"):
 
         api_key = env_or(api_key, "XLJ_API_KEY")
         if not api_key:
@@ -413,12 +413,12 @@ class XLJGPTTextProcessor:
             raise RuntimeError("请在 用户提示词 中输入文本，或从文档加载器接入 text_input")
 
         doc_length = len(doc_content)
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT 来源: {doc_source} | 长度: {doc_length} 字符")
+        print(f"[ComfyUI-XLJ-api] GPT 来源: {doc_source} | 长度: {doc_length} 字符")
 
         chunks = chunk_text(doc_content) if enable_chunking else [doc_content]
 
         if len(chunks) > 1:
-            print(f"[ComfyUI-XLJ-api] 信陵君 GPT 分段处理：{len(chunks)} 个片段")
+            print(f"[ComfyUI-XLJ-api] GPT 分段处理：{len(chunks)} 个片段")
             return self._process_chunks(model_name, system_prompt, api_key,
                                         chunks, extra_prompt, temperature, max_tokens, doc_length,
                                         api_site)
@@ -447,7 +447,7 @@ class XLJGPTTextProcessor:
             "max_tokens": int(max_tokens),
         }
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT 模型={model_name} | 长度={doc_length}")
+        print(f"[ComfyUI-XLJ-api] GPT 模型={model_name} | 长度={doc_length}")
 
         resp = session.post(endpoint, headers=headers, data=json.dumps(payload), timeout=300)
 
@@ -479,7 +479,7 @@ class XLJGPTTextProcessor:
             f"文档: {doc_length} 字符"
         )
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT 成功 | 输出: {len(output_text)} 字符")
+        print(f"[ComfyUI-XLJ-api] GPT 成功 | 输出: {len(output_text)} 字符")
         return (output_text, status_info)
 
     def _process_chunks(self, model_name, system_prompt, api_key, chunks,
@@ -493,7 +493,7 @@ class XLJGPTTextProcessor:
 
         for i, chunk in enumerate(chunks):
             chunk_label = f"第 {i+1}/{len(chunks)} 部分"
-            print(f"[ComfyUI-XLJ-api] 信陵君 GPT {chunk_label} ({len(chunk)} 字符)...")
+            print(f"[ComfyUI-XLJ-api] GPT {chunk_label} ({len(chunk)} 字符)...")
 
             user_content = f"以下是文档{chunk_label}：\n\n---\n{chunk}\n---\n"
             if extra_prompt and extra_prompt.strip():
@@ -531,7 +531,7 @@ class XLJGPTTextProcessor:
             f"文档: {doc_length} 字符"
         )
 
-        print(f"[ComfyUI-XLJ-api] 信陵君 GPT 分段完成 | 输出: {len(combined)} 字符")
+        print(f"[ComfyUI-XLJ-api] GPT 分段完成 | 输出: {len(combined)} 字符")
         return (combined, status_info)
 
 

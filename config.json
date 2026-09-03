@@ -1,20 +1,20 @@
 {
   "name": "ComfyUI-XLJ-api",
   "version": "1.0.0",
-  "description": "信陵君 AI API ComfyUI 节点插件",
-  "locked_api_base": "https://xinlingjunai.cn",
+  "description": "AI API ComfyUI 节点插件",
+  "locked_api_base": "https://api.openlux.ai",
   "supported_api_bases": {
-    "信陵君（默认）": "https://xinlingjunai.cn",
-    "OpenLux": "https://api.openlux.ai"
+    "国内站点": "https://xinlingjunai.cn",
+    "海外站点": "https://api.openlux.ai"
   },
   "file_integrity": {
     "xlj_utils.py": {
       "algorithm": "SHA256",
-      "hash": "6031a9c82574373132c0ae1224246122d2df753db5c07bd0d7ab23c109d5ce2d",
+      "hash": "7e86b2df81a43b0b1654abda04cfd69fae515e12cba6c7272ad7f8d0c5047fde",
       "description": "API 地址默认值及支持的备用站点"
     }
   },
-  "author": "信陵君",
+  "author": "ComfyUI-XLJ-api",
   "license": "MIT",
   "repository": "https://github.com/weiqing1987/ComfyUI-XLJ-api"
 }

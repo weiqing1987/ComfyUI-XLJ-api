@@ -419,7 +419,7 @@ class XLJGPTImageTextToImage:
         seed=0,
         style_preset="",
         output_format="png",
-        api_site="自动（环境变量）",
+        api_site="海外站点",
         unique_id=None,
     ):
         start_ts = time.time()
@@ -577,7 +577,7 @@ class XLJGPTImageImageToImage:
         image_input_9=None,
         image_input_10=None,
         image_mask=None,
-        api_site="自动（环境变量）",
+        api_site="海外站点",
     ):
         start_ts = time.time()
         retry_times = 1

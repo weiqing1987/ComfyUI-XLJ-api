@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-**ComfyUI-XLJ-api** 是信陵君 AI API 的 ComfyUI 节点插件
+**ComfyUI-XLJ-api** 是 AI API 的 ComfyUI 节点插件
 
 ## 项目结构
 
@@ -47,18 +47,18 @@ ComfyUI-XLJ-api/
 
 ### 1. API 地址
 
-所有通用节点使用 `API_BASE` 常量，定义在 `nodes/xlj_utils.py`。默认地址保持为信陵君，也可以在启动 ComfyUI 前通过 `XLJ_API_BASE` 切换：
+所有通用节点使用 `API_BASE` 常量，定义在 `nodes/xlj_utils.py`。GPT 相关节点支持“海外站点”和“国内站点”切换，默认使用海外站点；也可以通过 `XLJ_API_BASE` 指定地址：
 ```python
 from ..xlj_utils import API_BASE  # 默认值为 "https://xinlingjunai.cn"
 ```
 
-GPT 文本和 GPT-Image 节点支持 `API_SITE_OPTIONS` / `resolve_api_base`，可在节点中选择 OpenLux（`https://api.openlux.ai`）。
+GPT 文本和 GPT-Image 节点支持 `API_SITE_OPTIONS` / `resolve_api_base`，可在节点中选择国内或海外站点。
 
 ### 2. 日志前缀
 
 所有打印日志使用统一前缀：
 ```python
-print(f"[ComfyUI-XLJ-api] 信陵君 - 描述信息")
+print(f"[ComfyUI-XLJ-api] API - 描述信息")
 ```
 
 ### 3. 节点结构

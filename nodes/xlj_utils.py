@@ -1,5 +1,5 @@
 """
-XLJ Utils - 信陵君 AI 工具函数
+XLJ Utils - API 工具函数
 """
 
 import os
@@ -9,12 +9,13 @@ import numpy as np
 import requests
 from PIL import Image
 
-# API 基础地址。默认值保持兼容现有工作流，可通过 XLJ_API_BASE 切换整套插件。
-DEFAULT_API_BASE = "https://xinlingjunai.cn"
-API_SITE_OPTIONS = ["自动（环境变量）", "信陵君（默认）", "OpenLux"]
+# API 基础地址。站点名称只在节点界面显示，地址在这里统一映射。
+DOMESTIC_API_BASE = "https://xinlingjunai.cn"
+DEFAULT_API_SITE = "海外站点"
+API_SITE_OPTIONS = ["海外站点", "国内站点"]
 API_SITE_BASES = {
-    "信陵君（默认）": DEFAULT_API_BASE,
-    "OpenLux": "https://api.openlux.ai",
+    "国内站点": DOMESTIC_API_BASE,
+    "海外站点": "https://api.openlux.ai",
 }
 
 
@@ -22,16 +23,16 @@ def normalize_api_base(value: str) -> str:
     return str(value or "").strip().rstrip("/")
 
 
-def resolve_api_base(site: str = "") -> str:
+def resolve_api_base(site: str = DEFAULT_API_SITE) -> str:
     """Resolve a named site, a custom URL, or the XLJ_API_BASE override."""
-    site = str(site or "").strip()
+    site = str(site or DEFAULT_API_SITE).strip()
     if site in API_SITE_BASES:
         return API_SITE_BASES[site]
     if site.startswith(("http://", "https://")):
         return normalize_api_base(site)
 
     configured_base = normalize_api_base(os.environ.get("XLJ_API_BASE", ""))
-    return configured_base or DEFAULT_API_BASE
+    return configured_base or API_SITE_BASES[DEFAULT_API_SITE]
 
 
 API_BASE = resolve_api_base()
