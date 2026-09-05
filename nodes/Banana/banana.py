@@ -11,7 +11,13 @@ import numpy as np
 import requests
 from PIL import Image
 
-from ..xlj_utils import env_or, http_headers_json, API_BASE, to_pil_from_comfy
+from ..xlj_utils import (
+    API_SITE_OPTIONS,
+    env_or,
+    http_headers_json,
+    resolve_api_base,
+    to_pil_from_comfy,
+)
 
 # 禁用代理
 session = requests.Session()
@@ -103,6 +109,10 @@ class XLJBananaCreateImage:
                     "default": True,
                     "tooltip": "启用网络搜索增强（仅 gemini-3-pro-image-preview 和 gemini-3.1-flash-image-preview 支持）"
                 }),
+                "api_site": (API_SITE_OPTIONS, {
+                    "default": API_SITE_OPTIONS[0],
+                    "tooltip": "API 站点"
+                }),
             }
         }
 
@@ -123,7 +133,8 @@ class XLJBananaCreateImage:
             "image_size": "尺寸",
             "temperature": "温度",
             "seed": "种子值",
-            "use_search": "启用搜索"
+            "use_search": "启用搜索",
+            "api_site": "API 站点"
         }
 
     RETURN_TYPES = ("IMAGE", "STRING", "STRING")
@@ -135,7 +146,8 @@ class XLJBananaCreateImage:
     def generate(self, model_name, prompt, aspect_ratio="1:1", api_key="",
                  system_prompt="", image_1=None, image_2=None, image_3=None,
                  image_4=None, image_5=None, image_6=None, image_size="2K",
-                 temperature=1.0, seed=0, use_search=True):
+                 temperature=1.0, seed=0, use_search=True,
+                 api_site="海外站点"):
         """生成图像"""
         import random
 
@@ -152,7 +164,7 @@ class XLJBananaCreateImage:
             print(f"[ComfyUI-XLJ-api] 信陵君 Banana 使用固定种子：{actual_seed}")
 
         # 锁定 API 地址
-        api_base = API_BASE
+        api_base = resolve_api_base(api_site)
 
         # 准备参考图像（转换为 base64）
         reference_images_base64 = []
@@ -374,6 +386,10 @@ class XLJBananaMultiTurnChat:
                     "default": "",
                     "tooltip": "API 密钥"
                 }),
+                "api_site": (API_SITE_OPTIONS, {
+                    "default": API_SITE_OPTIONS[0],
+                    "tooltip": "API 站点"
+                }),
             }
         }
 
@@ -389,7 +405,8 @@ class XLJBananaMultiTurnChat:
             "seed": "种子值",
             "system_prompt": "系统提示词",
             "image_input": "参考图",
-            "api_key": "API 密钥"
+            "api_key": "API 密钥",
+            "api_site": "API 站点"
         }
 
     RETURN_TYPES = ("IMAGE", "STRING", "STRING", "STRING")
@@ -400,7 +417,8 @@ class XLJBananaMultiTurnChat:
 
     def generate_multiturn_image(self, model_name, prompt, reset_chat=False,
                                   aspect_ratio="1:1", image_size="2K", temperature=1.0,
-                                  seed=0, system_prompt="", image_input=None, api_key=""):
+                                  seed=0, system_prompt="", image_input=None, api_key="",
+                                  api_site="海外站点"):
         """多轮对话图像生成"""
         import random
 
@@ -422,7 +440,7 @@ class XLJBananaMultiTurnChat:
             actual_seed = seed
             print(f"[ComfyUI-XLJ-api] 信陵君 Banana 使用固定种子：{actual_seed}")
 
-        api_base = API_BASE
+        api_base = resolve_api_base(api_site)
         endpoint = f"{api_base}/v1beta/models/{model_name}:streamGenerateContent"
         headers = http_headers_json(api_key)
 
