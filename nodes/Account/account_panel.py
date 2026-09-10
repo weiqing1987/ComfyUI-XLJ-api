@@ -106,6 +106,49 @@ def store_current_api_key(api_key):
     (AUTH_DIR / "current_api_key").write_text(api_key.strip(), encoding="utf-8")
 
 
+def force_switch_marker(base):
+    return AUTH_DIR / f"force_switch_{_slug(base)}"
+
+
+def clear_account_cache(base):
+    """退出登录：清掉会话、当前密钥和浏览器登录状态，保证换号时是干净的。"""
+    removed = []
+
+    path = session_path(base)
+    if path.is_file():
+        try:
+            path.unlink()
+            removed.append("会话")
+        except Exception as exc:
+            print(f"[ComfyUI-XLJ-api] 删除会话失败：{exc}")
+
+    key_path = AUTH_DIR / "current_api_key"
+    if key_path.is_file():
+        try:
+            key_path.unlink()
+            removed.append("当前密钥")
+        except Exception as exc:
+            print(f"[ComfyUI-XLJ-api] 删除当前密钥失败：{exc}")
+
+    try:
+        import shutil
+        if PROFILE_DIR.is_dir():
+            shutil.rmtree(PROFILE_DIR)
+            removed.append("浏览器登录状态")
+    except Exception as exc:
+        print(f"[ComfyUI-XLJ-api] 浏览器配置未删除（可能正被占用）：{exc}")
+
+    # 即使浏览器配置没删掉，也标记下次登录强制清理，避免继续用旧账号
+    try:
+        AUTH_DIR.mkdir(parents=True, exist_ok=True)
+        force_switch_marker(base).write_text("1", encoding="utf-8")
+    except Exception as exc:
+        print(f"[ComfyUI-XLJ-api] 写入换号标记失败：{exc}")
+
+    LOGIN_STATE.pop(base, None)
+    return removed
+
+
 def session_headers(session):
     return {
         "Accept": "application/json",
@@ -333,7 +376,7 @@ def ensure_playwright():
     print("[ComfyUI-XLJ-api] playwright 安装完成")
 
 
-def run_browser_login(base, username, password, timeout_seconds, browser):
+def run_browser_login(base, username, password, timeout_seconds, browser, switch_account=False):
     ensure_playwright()
     channel = BROWSER_CHANNELS.get(browser, "msedge")
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
@@ -346,6 +389,8 @@ def run_browser_login(base, username, password, timeout_seconds, browser):
         "--channel", channel,
         "--timeout", str(int(timeout_seconds)),
     ]
+    if switch_account:
+        command.append("--switch-account")
 
     env = dict(os.environ)
     if username:
@@ -380,20 +425,35 @@ def run_browser_login(base, username, password, timeout_seconds, browser):
     return result
 
 
-def _login_worker(base, username, password, timeout_seconds, browser):
+def _login_worker(base, username, password, timeout_seconds, browser, switch_account=False):
+    previous = load_session(base) or {}
     try:
-        result = run_browser_login(base, username, password, timeout_seconds, browser)
+        result = run_browser_login(base, username, password, timeout_seconds, browser, switch_account)
         session = {
             "user_id": result.get("user_id"),
             "username": result.get("username") or username,
             "cookies": result.get("cookies") or [],
         }
         path = save_session(base, session)
+
+        switched = bool(previous.get("user_id")) and previous.get("user_id") != session.get("user_id")
+        if switched:
+            # 换了账号，旧账号的密钥不能继续当当前密钥用
+            key_path = AUTH_DIR / "current_api_key"
+            try:
+                if key_path.is_file():
+                    key_path.unlink()
+            except Exception as exc:
+                print(f"[ComfyUI-XLJ-api] 清理旧账号密钥失败：{exc}")
+
+        message = f"登录成功：{session['username'] or '-'}（{path.name}）"
+        if switched:
+            message += "，已切换账号并清除旧账号的密钥缓存"
         LOGIN_STATE[base] = {
             "state": "done",
-            "message": f"登录成功：{session['username'] or '-'}（{path.name}）",
+            "message": message,
         }
-        print(f"[ComfyUI-XLJ-api] 登录成功并保存会话：{path}")
+        print(f"[ComfyUI-XLJ-api] {message}")
     except Exception as exc:
         LOGIN_STATE[base] = {"state": "error", "message": str(exc)}
         print(f"[ComfyUI-XLJ-api] 登录失败：{exc}")
@@ -494,11 +554,20 @@ def register_routes():
         password = str(body.get("password") or "")
         timeout_seconds = int(body.get("timeout") or 300)
         browser = str(body.get("browser") or default_browser())
+        switch_account = bool(body.get("switch_account"))
+
+        marker = force_switch_marker(base)
+        if marker.is_file():
+            switch_account = True
+            try:
+                marker.unlink()
+            except Exception:
+                pass
 
         LOGIN_STATE[base] = {"state": "running", "message": "浏览器已打开，请在浏览器里完成验证码登录"}
         threading.Thread(
             target=_login_worker,
-            args=(base, username, password, timeout_seconds, browser),
+            args=(base, username, password, timeout_seconds, browser, switch_account),
             daemon=True,
         ).start()
         print(f"[ComfyUI-XLJ-api] 已拉起浏览器登录：{base}")
@@ -618,11 +687,34 @@ def register_routes():
         except Exception as exc:
             return web.json_response({"success": False, "message": str(exc), "tokens": []})
 
+    async def logout(request):
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        api_site = body.get("api_site") or request.query.get("api_site") or API_SITE_OPTIONS[0]
+        base = resolve_api_base(api_site)
+        try:
+            removed = await asyncio.get_running_loop().run_in_executor(
+                None, clear_account_cache, base
+            )
+        except Exception as exc:
+            return web.json_response({"success": False, "message": str(exc)})
+
+        detail = "、".join(removed) if removed else "没有需要清理的内容"
+        print(f"[ComfyUI-XLJ-api] 已退出登录：{base}（清理：{detail}）")
+        return web.json_response({
+            "success": True,
+            "state": "logged_out",
+            "message": f"已退出登录，清理：{detail}",
+        })
+
     routes.post("/xlj/account/login")(login)
     routes.get("/xlj/account/status")(status)
     routes.post("/xlj/account/create-key")(create_key)
     routes.get("/xlj/account/groups")(groups)
     routes.get("/xlj/account/tokens")(tokens)
+    routes.post("/xlj/account/logout")(logout)
     print("[ComfyUI-XLJ-api] 账号面板接口已注册")
 
 

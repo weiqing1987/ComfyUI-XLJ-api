@@ -28,6 +28,10 @@ function injectStyle() {
         }
         .xlj-account-panel button:hover { background: #3a3a3a; }
         .xlj-account-panel button:disabled { opacity: 0.5; cursor: default; }
+        .xlj-account-panel .xlj-switch {
+            display: flex; align-items: center; gap: 6px; font-size: 11px; color: #a9a9a9;
+        }
+        .xlj-account-panel .xlj-switch input { width: auto; margin: 0; }
         .xlj-account-panel .xlj-status {
             font-size: 11px; color: #a9a9a9; white-space: pre-wrap; word-break: break-all; line-height: 1.35;
         }
@@ -82,6 +86,13 @@ function createPanel(node) {
             <button class="xlj-login">登录</button>
             <button class="xlj-gen">生成密钥</button>
         </div>
+        <div class="xlj-row">
+            <button class="xlj-logout">退出登录</button>
+        </div>
+        <label class="xlj-switch">
+            <input type="checkbox" class="xlj-switchbox">
+            换号登录（清除浏览器里的登录状态）
+        </label>
         <select class="xlj-history"><option value="">选择已有密钥…</option></select>
         <input class="xlj-key" readonly placeholder="生成的密钥会显示在这里">
         <div class="xlj-status">未登录</div>
@@ -93,6 +104,8 @@ function createPanel(node) {
     const historySelect = wrap.querySelector(".xlj-history");
     const keyInput = wrap.querySelector(".xlj-key");
     const loginButton = wrap.querySelector(".xlj-login");
+    const logoutButton = wrap.querySelector(".xlj-logout");
+    const switchBox = wrap.querySelector(".xlj-switchbox");
     const genButton = wrap.querySelector(".xlj-gen");
     const statusLine = wrap.querySelector(".xlj-status");
 
@@ -251,13 +264,46 @@ function createPanel(node) {
                 username,
                 password,
                 timeout: 300,
+                switch_account: switchBox.checked,
             });
             applyStatus(payload);
             passInput.value = "";
+            switchBox.checked = false;
             startPolling();
         } catch (error) {
             loginButton.disabled = false;
             setStatus(`登录请求失败：${error}`, "err");
+        }
+    });
+
+    logoutButton.addEventListener("click", async () => {
+        logoutButton.disabled = true;
+        setStatus("正在退出登录并清理缓存…");
+        try {
+            const payload = await postJson("/xlj/account/logout", {
+                api_site: readWidget(node, "api_site", ""),
+            });
+            if (!payload.success) {
+                setStatus(payload.message || "退出登录失败", "err");
+                return;
+            }
+            stopPolling();
+            writeWidget(node, "api_key", "");
+            syncKeyBox();
+            state.history = [];
+            historySelect.innerHTML = "";
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "选择已有密钥…";
+            historySelect.appendChild(placeholder);
+            passInput.value = "";
+            setStatus(`${payload.message}\n其它节点里填过的 api_key 需要自己清一下。`, "ok");
+            loadGroups();
+            loadHistory();
+        } catch (error) {
+            setStatus(`退出登录失败：${error}`, "err");
+        } finally {
+            logoutButton.disabled = false;
         }
     });
 

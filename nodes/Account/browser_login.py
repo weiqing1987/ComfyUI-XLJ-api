@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--username", default="")
     parser.add_argument("--password", default="")
+    parser.add_argument("--switch-account", action="store_true")
     return parser.parse_args()
 
 
@@ -77,6 +78,22 @@ def find_logged_in_user(context):
     return None, None
 
 
+def account_matches(user, expected):
+    """判断浏览器里已登录的账号是不是用户这次想登的账号。"""
+    if not expected:
+        return True
+    expected = expected.strip().lower()
+    values = [
+        str(user.get("username") or "").lower(),
+        str(user.get("display_name") or "").lower(),
+        str(user.get("email") or "").lower(),
+    ]
+    for value in values:
+        if value and (value == expected or expected in value or value in expected):
+            return True
+    return False
+
+
 def main():
     args = parse_args()
     output = {"ok": False, "error": "登录未完成"}
@@ -108,10 +125,30 @@ def main():
 
         try:
             page = context.pages[0] if context.pages else context.new_page()
+
+            if args.switch_account:
+                try:
+                    context.clear_cookies()
+                    print("[login] 已清除浏览器登录状态，准备换号登录", file=sys.stderr)
+                except Exception as exc:
+                    print(f"[login] 清除登录状态失败：{exc}", file=sys.stderr)
+
             try:
                 page.goto(args.base.rstrip("/") + "/login", wait_until="domcontentloaded", timeout=60000)
             except Exception as exc:
                 print(f"[login] 打开登录页失败：{exc}", file=sys.stderr)
+
+            # 浏览器里可能还留着上一个账号，和本次要登的账号不一致时先退出来
+            if not args.switch_account and username:
+                _, existing = find_logged_in_user(context)
+                if existing and not account_matches(existing, username):
+                    print("[login] 检测到浏览器已登录其它账号，自动切换", file=sys.stderr)
+                    try:
+                        context.clear_cookies()
+                        page.goto(args.base.rstrip("/") + "/login", wait_until="domcontentloaded", timeout=60000)
+                    except Exception as exc:
+                        print(f"[login] 自动切换账号失败：{exc}", file=sys.stderr)
+
             prefill(page, username, password)
 
             deadline = time.time() + max(30, args.timeout)
