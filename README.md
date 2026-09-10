@@ -80,7 +80,8 @@ XLJ_API_BASE=https://your-api-base.example.com
 选「不限制」则完全不限制模型，由分组决定可用范围。
 
 登录会话保存在插件目录的 `.auth/` 下（已加入 `.gitignore`），之后运行会复用，不需要反复登录。
-浏览器登录依赖 Playwright，安装命令：
+浏览器登录依赖 Playwright，插件在首次点击「登录」时会自动安装（约 40MB，只需一次）；
+如果自动安装失败，可以手动执行：
 
 ```bash
 python -m pip install playwright

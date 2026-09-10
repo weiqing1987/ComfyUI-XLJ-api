@@ -298,7 +298,43 @@ def normalize_api_key(token):
     return key if key.startswith("sk-") else f"sk-{key}"
 
 
+def ensure_playwright():
+    """没装 playwright 时自动装一次，失败则给出可复制的手动命令。"""
+    import importlib
+    import importlib.util
+
+    if importlib.util.find_spec("playwright") is not None:
+        return
+
+    print("[ComfyUI-XLJ-api] 未检测到 playwright，正在自动安装（约 40MB，只需一次）…")
+    command = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "playwright"]
+    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    detail = ""
+    try:
+        proc = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=900,
+            creationflags=creation_flags,
+        )
+        detail = ((proc.stdout or "") + (proc.stderr or ""))[-400:]
+    except Exception as exc:
+        detail = str(exc)
+
+    importlib.invalidate_caches()
+    if importlib.util.find_spec("playwright") is None:
+        raise RuntimeError(
+            "playwright 未安装，自动安装也没成功。请手动执行：\n"
+            f'"{sys.executable}" -m pip install playwright\n{detail}'
+        )
+    print("[ComfyUI-XLJ-api] playwright 安装完成")
+
+
 def run_browser_login(base, username, password, timeout_seconds, browser):
+    ensure_playwright()
     channel = BROWSER_CHANNELS.get(browser, "msedge")
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 

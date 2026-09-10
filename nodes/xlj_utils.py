@@ -16,7 +16,7 @@ DEFAULT_API_SITE = "海外站点"
 API_SITE_OPTIONS = ["海外站点", "国内站点"]
 API_SITE_BASES = {
     "国内站点": DOMESTIC_API_BASE,
-    "海外站点": "https://api.openlux.ai",
+    "海外站点": "https://fh.xinlingjunapi.com",
 }
 
 
