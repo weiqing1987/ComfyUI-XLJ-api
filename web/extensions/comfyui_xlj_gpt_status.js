@@ -2,7 +2,10 @@ import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
 const EXTENSION_NAME = "comfyui_xlj_gpt.runtime_status";
-const TARGET_NODE_TYPES = new Set(["XLJGPTImageImageToImage"]);
+const TARGET_NODE_TYPES = new Set([
+    "XLJGPTImageImageToImage",
+    "XLJGPTImage25ImageToImage",
+]);
 const STATUS_EVENT = "comfyui_xlj_gpt_status";
 
 const runtimeStateByNodeId = new Map();

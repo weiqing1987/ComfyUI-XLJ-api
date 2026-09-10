@@ -35,6 +35,12 @@ GPT_IMAGE_MODELS = [
     "gpt-image-2-c",
 ]
 
+# GPT-Image-2.5 系列目前只在海外站点上架，节点固定走海外端点。
+GPT_IMAGE_25_MODELS = [
+    "gpt-image-2.5-flare-c",
+    "gpt-image-2.5-sunburst-c",
+]
+
 ASPECT_RATIO_LABELS = [
     "1:1",
     "2:3",
@@ -738,12 +744,60 @@ class XLJGPTImageImageToImage:
             raise RuntimeError(f"生成失败: {exc}")
 
 
+class XLJGPTImage25TextToImage(XLJGPTImageTextToImage):
+    """GPT-Image-2.5 文生图，固定使用海外端点。"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        data = super().INPUT_TYPES()
+        data["required"]["model_name"] = (
+            GPT_IMAGE_25_MODELS,
+            {"default": GPT_IMAGE_25_MODELS[0], "tooltip": "选择 GPT-Image-2.5 模型（仅海外站点）"},
+        )
+        data["optional"].pop("api_site", None)
+        return data
+
+    @classmethod
+    def INPUT_LABELS(cls):
+        labels = super().INPUT_LABELS()
+        labels.pop("api_site", None)
+        return labels
+
+
+class XLJGPTImage25ImageToImage(XLJGPTImageImageToImage):
+    """GPT-Image-2.5 图生图，固定使用海外端点。"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        data = super().INPUT_TYPES()
+        data["required"]["model"] = (
+            GPT_IMAGE_25_MODELS,
+            {"default": GPT_IMAGE_25_MODELS[0], "tooltip": "选择 GPT-Image-2.5 模型（仅海外站点）"},
+        )
+        data["optional"]["background"] = (
+            EDIT_BACKGROUNDS,
+            {"default": "auto", "tooltip": "背景模式"},
+        )
+        data["optional"].pop("api_site", None)
+        return data
+
+    @classmethod
+    def INPUT_LABELS(cls):
+        labels = super().INPUT_LABELS()
+        labels.pop("api_site", None)
+        return labels
+
+
 NODE_CLASS_MAPPINGS = {
     "XLJGPTImageTextToImage": XLJGPTImageTextToImage,
     "XLJGPTImageImageToImage": XLJGPTImageImageToImage,
+    "XLJGPTImage25TextToImage": XLJGPTImage25TextToImage,
+    "XLJGPTImage25ImageToImage": XLJGPTImage25ImageToImage,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "XLJGPTImageTextToImage": "XLJ GPT-Image 文生图",
     "XLJGPTImageImageToImage": "XLJ GPT-Image 图生图",
+    "XLJGPTImage25TextToImage": "XLJ GPT-Image-2.5 文生图",
+    "XLJGPTImage25ImageToImage": "XLJ GPT-Image-2.5 图生图",
 }

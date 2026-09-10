@@ -15,6 +15,7 @@ API 站点支持国内和海外两个站点，默认使用海外站点。
 - Banana 图像生成 / 多轮对话编辑
 - Seedream 即梦图像生成
 - GPT-Image 图像生成 (gpt-image-2)
+- GPT-Image-2.5 图像生成 (仅海外站点)
 - GPT 文本处理
 - 视频反推 (VideoReverse)
 - 查询任务状态
@@ -67,6 +68,8 @@ XLJ_API_BASE=https://your-api-base.example.com
 - `seedream+参考图出图-API调用.json`
 - `gpt-image-2+文生图-API调用.json`
 - `gpt-image-2+图生图-API调用.json`
+- `gpt-image-2.5+文生图-API调用.json`
+- `gpt-image-2.5+图生图-API调用.json`
 - `gpt+文本处理-API调用.json`
 
 ## 节点列表
@@ -192,6 +195,15 @@ CreateVideo -> XLJMiniMaxH3UploadVideo -> XLJMiniMaxH3Regenerate2K -> SaveVideo
 ### GPT-Image
 
 - `gpt-image-2` - 文生图/图生图
+
+### GPT-Image-2.5
+
+仅在海外站点提供，节点固定使用海外端点，不需要选择 API 站点。
+
+- `gpt-image-2.5-flare-c` - 均衡低延迟，适合批量快速出图
+- `gpt-image-2.5-sunburst-c` - 高精度，细节和提示词还原更强
+- `XLJGPTImage25TextToImage` - 文生图
+- `XLJGPTImage25ImageToImage` - 图生图
 
 ## 常见问题
 
