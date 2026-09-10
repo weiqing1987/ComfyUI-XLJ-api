@@ -1,0 +1,58 @@
+{
+  "id": "xlj-account-panel-01",
+  "revision": 2,
+  "last_node_id": 1,
+  "last_link_id": 0,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "XLJApiKeyPanel",
+      "pos": [
+        80,
+        120
+      ],
+      "size": [
+        380,
+        520
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "API_KEY",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 0
+        },
+        {
+          "name": "状态",
+          "type": "STRING",
+          "links": null,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "XLJApiKeyPanel"
+      },
+      "widgets_values": [
+        "海外站点",
+        "gpt-image-2.5-flare-c",
+        "",
+        "comfyui",
+        "",
+        true,
+        -1,
+        ""
+      ]
+    }
+  ],
+  "links": [],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "workflowRendererVersion": "LG"
+  },
+  "version": 0.4
+}

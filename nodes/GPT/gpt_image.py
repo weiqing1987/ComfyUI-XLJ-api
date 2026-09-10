@@ -364,6 +364,18 @@ def parse_error_message(response_text: str, status_code: int) -> str:
     return str(err_data)
 
 
+def permission_hint(response_text: str) -> str:
+    """令牌绑定了别的模型或分组不对时站点会返回 403，这里补一句可操作的提示。"""
+    text = str(response_text or "")
+    if "无权访问模型" in text or "无权使用该模型" in text:
+        return (
+            "\n提示：当前 api_key 没有该模型的权限，多半是密钥创建时绑定了别的模型。"
+            "请在「XLJ 密钥中控面板」里换一个不限制模型的密钥，"
+            "或把面板「模型」选成「不限制」重新生成密钥。"
+        )
+    return ""
+
+
 class XLJGPTImageTextToImage:
     @classmethod
     def INPUT_TYPES(cls):
@@ -467,7 +479,7 @@ class XLJGPTImageTextToImage:
             resp = session.post(endpoint, headers=headers, data=json.dumps(payload), timeout=(30, 600))
             response_text = resp.text
             if resp.status_code >= 400:
-                raise RuntimeError(parse_error_message(response_text, resp.status_code))
+                raise RuntimeError(parse_error_message(response_text, resp.status_code) + permission_hint(response_text))
 
             emit_runtime_status(unique_id, "running", "解析图片", time.time() - start_ts, 1, retry_times, 600)
             response_data = json.loads(response_text)
@@ -678,7 +690,9 @@ class XLJGPTImageImageToImage:
                 timeout=timeout_seconds,
             )
             if response.status_code != 200:
-                raise RuntimeError(f"API 错误 {response.status_code}: {response.text[:300]}")
+                raise RuntimeError(
+                    f"API 错误 {response.status_code}: {response.text[:300]}" + permission_hint(response.text)
+                )
 
             data = response.json()
             emit_runtime_status(unique_id, "running", "解析图片", time.time() - start_ts, 1, retry_times, timeout_seconds)

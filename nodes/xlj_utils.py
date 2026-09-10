@@ -5,6 +5,7 @@ XLJ Utils - API 工具函数
 import os
 import io
 import typing
+from pathlib import Path
 import numpy as np
 import requests
 from PIL import Image
@@ -37,11 +38,27 @@ def resolve_api_base(site: str = DEFAULT_API_SITE) -> str:
 
 API_BASE = resolve_api_base()
 
+def _stored_api_key() -> str:
+    """密钥中控面板生成密钥后会写入 .auth/current_api_key，这里作为最后的兜底。"""
+    try:
+        path = Path(__file__).resolve().parents[1] / ".auth" / "current_api_key"
+        if path.is_file():
+            return path.read_text(encoding="utf-8").strip()
+    except Exception:
+        pass
+    return ""
+
+
 def env_or(value: str, env_name: str) -> str:
-    """优先使用参数，其次使用环境变量"""
+    """优先使用参数，其次环境变量，最后使用密钥中控面板保存的密钥。"""
     if value and str(value).strip():
         return value
-    return os.environ.get(env_name, "").strip()
+    env_value = os.environ.get(env_name, "").strip()
+    if env_value:
+        return env_value
+    if env_name == "XLJ_API_KEY":
+        return _stored_api_key()
+    return ""
 
 def _to_numpy_from_comfy(image_any, index: int = 0):
     """将 ComfyUI 常见输入统一展开为 numpy 数组或原对象。"""

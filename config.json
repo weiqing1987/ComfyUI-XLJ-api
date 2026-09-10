@@ -10,7 +10,7 @@
   "file_integrity": {
     "xlj_utils.py": {
       "algorithm": "SHA256",
-      "hash": "7e86b2df81a43b0b1654abda04cfd69fae515e12cba6c7272ad7f8d0c5047fde",
+      "hash": "a572538111b51777a628a8339c3b884c756403991f6323f41051a26770dd0626",
       "description": "API 地址默认值及支持的备用站点"
     }
   },

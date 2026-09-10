@@ -43,6 +43,9 @@ Thumbs.db
 .env
 .env.local
 
+# 账号中控：浏览器配置与登录会话（含凭据，禁止提交）
+.auth/
+
 # Output files
 output/
 test_outputs/
